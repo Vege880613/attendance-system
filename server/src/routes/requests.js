@@ -38,12 +38,16 @@ router.post('/', authRequired, (req, res) => {
       });
     }
 
-    // 验证调休余额是否足够
+    // 验证调休余额是否足够（基于全部加班单位计算）
     const year = new Date(start_date).getFullYear();
-    const compBal = db.prepare(
-      `SELECT * FROM leave_balances WHERE user_id=? AND leave_type='compensatory' AND year=?`
-    ).get(req.user.id, year);
-    const compRemaining = compBal ? compBal.entitled_days - compBal.used_days : 0;
+    const allOvertime = db.prepare(
+      `SELECT COUNT(*) as cnt FROM overtime_units WHERE user_id = ? AND strftime('%Y', work_date) = ?`
+    ).get(req.user.id, String(year));
+    const entitledDays = Math.floor(allOvertime.cnt / 3) + (allOvertime.cnt % 3 > 0 ? 0.5 : 0);
+    const usedResult = db.prepare(
+      `SELECT COALESCE(SUM(days), 0) as total FROM attendance_requests WHERE user_id = ? AND leave_type_used = 'compensatory' AND status = 'entered' AND strftime('%Y', start_date) = ?`
+    ).get(req.user.id, String(year));
+    const compRemaining = entitledDays - usedResult.total;
     if (compRemaining < totalDays) {
       return res.status(400).json({
         message: `调休余额不足，当前剩余 ${compRemaining} 天，需要 ${totalDays} 天`
