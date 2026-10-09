@@ -12,12 +12,14 @@ router.get('/:userId', authRequired, (req, res) => {
   const year = new Date().getFullYear();
   let list = db.prepare('SELECT * FROM leave_balances WHERE user_id = ? AND year = ?').all(userId, year);
 
-  // 动态计算调休余额（基于可用加班单位）
-  const availableOvertime = db.prepare(
-    `SELECT COUNT(*) as cnt FROM overtime_units WHERE user_id = ? AND status = 'approved' AND strftime('%Y', work_date) = ?`
+  // 动态计算调休余额（基于全部加班单位，不仅仅是可用的）
+  const allOvertime = db.prepare(
+    `SELECT COUNT(*) as cnt FROM overtime_units WHERE user_id = ? AND strftime('%Y', work_date) = ?`
   ).get(userId, String(year));
 
-  const overtimeDays = availableOvertime.cnt * 0.5;
+  // 计算调休总额度：3单位=1天，1-2单位=0.5天
+  const totalUnits = allOvertime.cnt;
+  const overtimeDays = Math.floor(totalUnits / 3) + (totalUnits % 3 > 0 ? 0.5 : 0);
 
   // 获取已使用的调休天数
   const usedResult = db.prepare(

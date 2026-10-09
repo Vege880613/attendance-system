@@ -25,7 +25,10 @@
           </span>
         </template>
         <template v-if="column.key === 'effective_hours'">
-          <span :style="{ color: record.effective_hours <= 0 ? '#cf1322' : (record.is_shortage ? '#faad14' : 'inherit'), fontWeight: record.is_shortage ? 600 : 400 }">
+          <span v-if="record.type === 'leave'" style="color:#1890ff;">
+            {{ record.leave_type_name }}
+          </span>
+          <span v-else :style="{ color: record.effective_hours <= 0 ? '#cf1322' : (record.is_shortage ? '#faad14' : 'inherit'), fontWeight: record.is_shortage ? 600 : 400 }">
             {{ record.effective_hours }}h
             <span v-if="record.effective_hours <= 0" style="color:#cf1322;">⚠ 旷工</span>
             <span v-else-if="record.is_shortage" style="color:#faad14;">⚠ 缺卡</span>
@@ -152,6 +155,10 @@ async function fetchList() {
   const holidayRes = await holidayApi.list({ year: yearMonth.value.year() })
   const holidays = holidayRes.list
 
+  // 获取请假记录
+  const leaveRes = await leaveDetailApi.leaveDetail(selectedUser.value, { year: yearMonth.value.year() })
+  const leaves = leaveRes.list
+
   // 获取该月所有工作日，补充缺失的日期（无考勤的显示为旷工）
   const [year, month] = ym.split('-').map(Number)
   const daysInMonth = new Date(year, month, 0).getDate()
@@ -179,6 +186,22 @@ async function fetchList() {
 
     // 跳过周末（除非是调休上班日）
     if (isWeekend && !(holiday && holiday.type === 'workday')) {
+      continue
+    }
+
+    // 检查是否在请假范围内
+    const leave = leaves.find(l => dateStr >= l.start_date && dateStr <= l.end_date)
+    if (leave) {
+      allRecords.push({
+        id: null,
+        user_id: selectedUser.value,
+        work_date: dateStr,
+        type: 'leave',
+        leave_type: leave.leave_type,
+        leave_type_name: leave.leave_type === 'annual' ? '年假' : leave.leave_type === 'compensatory' ? '调休' : leave.leave_type,
+        is_shortage: 0,
+        offset_type: 'none'
+      })
       continue
     }
 

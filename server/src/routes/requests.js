@@ -249,13 +249,13 @@ router.put('/:id/confirm', authRequired, requireRole('manager'), (req, res) => {
       } else if (request.leave_type_used === 'compensatory') {
         // 调休：扣减调休余额 + 标记加班条目为已使用
         let bal = db.prepare(`SELECT * FROM leave_balances WHERE user_id=? AND leave_type='compensatory' AND year=?`).get(request.user_id, year);
-        // 如果余额不足，尝试从加班单位自动补录额度
+        // 如果余额不足，尝试从全部加班单位重新计算额度
         if (!bal || (bal.entitled_days - bal.used_days) < days) {
-          const availableOvertime = db.prepare(
-            `SELECT COUNT(*) as cnt FROM overtime_units WHERE user_id = ? AND status = 'approved'`
-          ).get(request.user_id);
-          // 计算可用加班单位对应的调休天数：3单位=1天，1单位=0.5天
-          const overtimeDays = Math.floor(availableOvertime.cnt / 3) + (availableOvertime.cnt % 3 > 0 ? 0.5 : 0);
+          const allOvertime = db.prepare(
+            `SELECT COUNT(*) as cnt FROM overtime_units WHERE user_id = ? AND strftime('%Y', work_date) = ?`
+          ).get(request.user_id, String(year));
+          // 计算全部加班单位对应的调休天数：3单位=1天，1-2单位=0.5天
+          const overtimeDays = Math.floor(allOvertime.cnt / 3) + (allOvertime.cnt % 3 > 0 ? 0.5 : 0);
           if (overtimeDays >= days) {
             if (bal) {
               db.prepare('UPDATE leave_balances SET entitled_days = ? WHERE id = ?').run(overtimeDays, bal.id);
@@ -264,7 +264,7 @@ router.put('/:id/confirm', authRequired, requireRole('manager'), (req, res) => {
             }
             bal = db.prepare(`SELECT * FROM leave_balances WHERE user_id=? AND leave_type='compensatory' AND year=?`).get(request.user_id, year);
           } else {
-            throw new Error('调休余额不足（可用加班单位不足以抵扣）');
+            throw new Error('调休余额不足（加班单位不足以抵扣）');
           }
         }
         db.prepare('UPDATE leave_balances SET used_days = used_days + ? WHERE id = ?').run(days, bal.id);
@@ -309,8 +309,8 @@ router.put('/:id/confirm', authRequired, requireRole('manager'), (req, res) => {
         if (compDays > 0) {
           let compBal = db.prepare(`SELECT * FROM leave_balances WHERE user_id=? AND leave_type='compensatory' AND year=?`).get(request.user_id, year);
           if (!compBal || (compBal.entitled_days - compBal.used_days) < compDays) {
-            const availableOvertime = db.prepare(`SELECT COUNT(*) as cnt FROM overtime_units WHERE user_id = ? AND status = 'approved'`).get(request.user_id);
-            const overtimeDays = Math.floor(availableOvertime.cnt / 3) + (availableOvertime.cnt % 3 > 0 ? 0.5 : 0);
+            const allOvertime = db.prepare(`SELECT COUNT(*) as cnt FROM overtime_units WHERE user_id = ? AND strftime('%Y', work_date) = ?`).get(request.user_id, String(year));
+            const overtimeDays = Math.floor(allOvertime.cnt / 3) + (allOvertime.cnt % 3 > 0 ? 0.5 : 0);
             if (overtimeDays >= compDays) {
               if (compBal) {
                 db.prepare('UPDATE leave_balances SET entitled_days = ? WHERE id = ?').run(overtimeDays, compBal.id);

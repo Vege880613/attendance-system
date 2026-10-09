@@ -119,7 +119,7 @@ router.get('/summary', authRequired, requireRole('manager', 'team_lead'), (req, 
           leaveDays: leave.days,
           leaveReason: leave.reason,
           effectiveHours: 0,
-          isShortage: true
+          isShortage: false
         });
       } else if (attendance) {
         // 有考勤记录
