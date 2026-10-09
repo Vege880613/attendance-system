@@ -28,13 +28,15 @@ router.post('/', authRequired, (req, res) => {
       return res.status(400).json({ message: '选择的加班条目不可用或不属于您' });
     }
 
-    // 验证累计时长是否等于休假时长
+    // 验证累计时长是否等于休假时长（混合抵扣需扣除年假天数）
     // 计算规则：1个加班单位=0.5天，但1整天需要3个单位（不是2个）
     const totalUnits = units.reduce((sum, u) => sum + u.units_count, 0);
     const totalDays = Math.floor(totalUnits / 3) + (totalUnits % 3 > 0 ? 0.5 : 0);
-    if (Math.abs(totalDays - Number(days)) > 0.01) {
+    const annualDaysUsed = leave_type_used === 'mixed' ? (Number(annual_days) || 0) : 0;
+    const expectedCompDays = Number(days) - annualDaysUsed;
+    if (Math.abs(totalDays - expectedCompDays) > 0.01) {
       return res.status(400).json({
-        message: `选择的加班条目累计可抵扣 ${totalDays} 天，与申请天数 ${days} 天不匹配`
+        message: `选择的加班条目累计可抵扣 ${totalDays} 天，与需要抵扣的调休天数 ${expectedCompDays} 天不匹配（总请假 ${days} 天 - 年假 ${annualDaysUsed} 天）`
       });
     }
 
