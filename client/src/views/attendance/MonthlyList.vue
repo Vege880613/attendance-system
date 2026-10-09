@@ -168,8 +168,6 @@ async function fetchList() {
   } catch (e) {
     console.error('获取请假记录失败:', e)
   }
-  const leaveRes = await leaveDetailApi.leaveDetail(selectedUser.value, { year: yearMonth.value.year() })
-  const leaves = leaveRes.list
 
   // 获取该月所有工作日，补充缺失的日期（无考勤的显示为旷工）
   const [year, month] = ym.split('-').map(Number)
