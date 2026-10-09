@@ -152,10 +152,22 @@ async function fetchList() {
   const res = await attendanceApi.list(params)
 
   // 获取节假日
-  const holidayRes = await holidayApi.list({ year: yearMonth.value.year() })
-  const holidays = holidayRes.list
+  let holidays = []
+  try {
+    const holidayRes = await holidayApi.list({ year: yearMonth.value.year() })
+    holidays = holidayRes.list
+  } catch (e) {
+    console.error('获取节假日失败:', e)
+  }
 
   // 获取请假记录
+  let leaves = []
+  try {
+    const leaveRes = await leaveDetailApi.leaveDetail(selectedUser.value, { year: yearMonth.value.year() })
+    leaves = leaveRes.list
+  } catch (e) {
+    console.error('获取请假记录失败:', e)
+  }
   const leaveRes = await leaveDetailApi.leaveDetail(selectedUser.value, { year: yearMonth.value.year() })
   const leaves = leaveRes.list
 
