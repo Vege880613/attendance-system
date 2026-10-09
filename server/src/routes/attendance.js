@@ -27,7 +27,20 @@ router.get('/', authRequired, (req, res) => {
       ORDER BY a.work_date ASC
     `).all(targetUserId, yearMonth);
   }
-  res.json({ list });
+
+  // 同时返回该月的请假记录（用于月度考勤页面显示）
+  let leaves = [];
+  if (targetUserId) {
+    leaves = db.prepare(`
+      SELECT id, user_id, type, start_date, end_date, days, leave_type_used, reason, status
+      FROM attendance_requests
+      WHERE user_id = ? AND status = 'entered' AND type = 'leave'
+        AND strftime('%Y-%m', start_date) <= ?
+        AND strftime('%Y-%m', end_date) >= ?
+    `).all(targetUserId, yearMonth, yearMonth);
+  }
+
+  res.json({ list, leaves });
 });
 
 router.post('/batch', authRequired, requireRole('manager'), (req, res) => {

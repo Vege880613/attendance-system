@@ -160,14 +160,8 @@ async function fetchList() {
     console.error('获取节假日失败:', e)
   }
 
-  // 获取请假记录
-  let leaves = []
-  try {
-    const leaveRes = await leaveDetailApi.leaveDetail(selectedUser.value, { year: yearMonth.value.year() })
-    leaves = leaveRes.list
-  } catch (e) {
-    console.error('获取请假记录失败:', e)
-  }
+  // 获取请假记录（直接从考勤列表API获取）
+  let leaves = res.leaves || []
 
   // 获取该月所有工作日，补充缺失的日期（无考勤的显示为旷工）
   const [year, month] = ym.split('-').map(Number)
@@ -202,13 +196,20 @@ async function fetchList() {
     // 检查是否在请假范围内
     const leave = leaves.find(l => dateStr >= l.start_date && dateStr <= l.end_date)
     if (leave) {
+      const leaveTypeMap = {
+        annual: '年假',
+        compensatory: '调休',
+        marriage: '婚假',
+        business_trip: '公差',
+        other: '其他'
+      }
       allRecords.push({
         id: null,
         user_id: selectedUser.value,
         work_date: dateStr,
         type: 'leave',
-        leave_type: leave.leave_type,
-        leave_type_name: leave.leave_type === 'annual' ? '年假' : leave.leave_type === 'compensatory' ? '调休' : leave.leave_type,
+        leave_type: leave.leave_type_used,
+        leave_type_name: leaveTypeMap[leave.leave_type_used] || leave.leave_type_used,
         is_shortage: 0,
         offset_type: 'none'
       })
