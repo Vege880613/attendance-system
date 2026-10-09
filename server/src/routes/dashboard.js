@@ -123,17 +123,28 @@ router.get('/summary', authRequired, requireRole('manager', 'team_lead'), (req, 
         });
       } else if (attendance) {
         // 有考勤记录
-        // 有效工时为0 或 短缺 都视为旷工/缺卡
-        const isAbsent = attendance.effective_hours <= 0 || attendance.is_shortage === 1;
+        // 判断状态：>=8.67小时=正常，0-8.67小时=缺卡，<=0=旷工
+        const effectiveHours = attendance.effective_hours;
+        let status, isShortage;
+        if (effectiveHours >= 8.67) {
+          status = '正常';
+          isShortage = false;
+        } else if (effectiveHours > 0) {
+          status = '缺卡';
+          isShortage = true;
+        } else {
+          status = '旷工';
+          isShortage = true;
+        }
         dailyDetails.push({
           date: dateStr,
           dayOfWeek,
           type: 'attendance',
-          status: isAbsent ? (attendance.effective_hours <= 0 ? '旷工' : '缺卡') : '正常',
+          status,
           checkIn: attendance.check_in,
           checkOut: attendance.check_out,
-          effectiveHours: attendance.effective_hours,
-          isShortage: isAbsent,
+          effectiveHours,
+          isShortage,
           offsetType: attendance.offset_type,
           offsetUnits: attendance.offset_units,
           remark: attendance.remark

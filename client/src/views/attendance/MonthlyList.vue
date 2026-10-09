@@ -46,7 +46,7 @@
 
     <!-- 抵扣弹窗 -->
     <a-modal v-model:open="offsetVisible" title="考勤抵扣" @ok="onOffset" :confirm-loading="offsetLoading" width="600">
-      <p>日期: {{ currentRecord?.work_date }}，有效工时: {{ currentRecord?.effective_hours }}h（缺卡 {{ (8 - currentRecord?.effective_hours).toFixed(2) }}h）</p>
+      <p>日期: {{ currentRecord?.work_date }}，有效工时: {{ currentRecord?.effective_hours }}h（缺卡 {{ (8.67 - currentRecord?.effective_hours).toFixed(2) }}h）</p>
       <a-form layout="vertical">
         <a-form-item label="抵扣方式">
           <a-radio-group v-model:value="offsetForm.offsetType" @change="onOffsetTypeChange">
