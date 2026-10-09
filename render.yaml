@@ -1,0 +1,13 @@
+// Render 配置文件
+// 在项目根目录创建 render.yaml
+services:
+  - type: web
+    name: attendance-system-api
+    env: node
+    buildCommand: cd server && npm install
+    startCommand: cd server && node src/app.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
