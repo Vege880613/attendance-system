@@ -18,10 +18,10 @@ router.get('/detail/:userId', authRequired, (req, res) => {
   // 年假明细
   let sql = `
     SELECT r.id, r.type, r.subtype, r.start_date, r.end_date, r.days,
-           r.status, r.reason, r.team_lead_comment, r.manager_comment,
-           u.name AS user_name, 'annual' AS leave_type
+           r.status, r.reason, r.team_lead_comment, r.dept_manager_comment, r.manager_comment,
+           u.name AS user_name, 'annual' AS leave_type, tl.name AS team_lead_name, dm.name AS dept_manager_name, m.name AS manager_name
     FROM attendance_requests r
-    JOIN users u ON r.user_id = u.id
+    JOIN users u ON r.user_id = u.id LEFT JOIN users tl ON r.team_lead_id = tl.id LEFT JOIN users dm ON r.dept_manager_id = dm.id LEFT JOIN users m ON r.manager_id = m.id
     WHERE r.user_id = ? AND r.leave_type_used = 'annual'
       AND strftime('%Y', r.start_date) = ?
       AND r.status = 'entered'
@@ -31,10 +31,10 @@ router.get('/detail/:userId', authRequired, (req, res) => {
   if (leaveType && leaveType !== 'annual') {
     sql = `
       SELECT r.id, r.type, r.subtype, r.start_date, r.end_date, r.days,
-             r.status, r.reason, r.team_lead_comment, r.manager_comment,
-             u.name AS user_name, ? AS leave_type
+             r.status, r.reason, r.team_lead_comment, r.dept_manager_comment, r.manager_comment,
+             u.name AS user_name, ? AS leave_type, tl.name AS team_lead_name, dm.name AS dept_manager_name, m.name AS manager_name
       FROM attendance_requests r
-      JOIN users u ON r.user_id = u.id
+      JOIN users u ON r.user_id = u.id LEFT JOIN users tl ON r.team_lead_id = tl.id LEFT JOIN users dm ON r.dept_manager_id = dm.id LEFT JOIN users m ON r.manager_id = m.id
       WHERE r.user_id = ? AND r.leave_type_used = ?
         AND strftime('%Y', r.start_date) = ?
         AND r.status = 'entered'

@@ -44,6 +44,18 @@
           <template v-if="column.key === 'date_range'">
             {{ record.start_date }} ~ {{ record.end_date }}
           </template>
+          <template v-if="column.key === 'team_lead_name'">
+            <span v-if="record.team_lead_name" style="color:#52c41a;">{{ record.team_lead_name }}</span>
+            <span v-else style="color:#999;">-</span>
+          </template>
+          <template v-if="column.key === 'dept_manager_name'">
+            <span v-if="record.dept_manager_name" style="color:#52c41a;">{{ record.dept_manager_name }}</span>
+            <span v-else style="color:#999;">-</span>
+          </template>
+          <template v-if="column.key === 'manager_name'">
+            <span v-if="record.manager_name" style="color:#52c41a;">{{ record.manager_name }}</span>
+            <span v-else style="color:#999;">-</span>
+          </template>
         </template>
         <template #emptyText>
           <a-empty description="暂无请假记录" />
@@ -104,8 +116,9 @@ const detailColumns = [
   { title: '日期范围', key: 'date_range', width: 180 },
   { title: '天数', dataIndex: 'days', key: 'days', width: 60 },
   { title: '原因', dataIndex: 'reason', key: 'reason' },
-  { title: '班组长意见', dataIndex: 'team_lead_comment', key: 'team_lead_comment' },
-  { title: '管理员意见', dataIndex: 'manager_comment', key: 'manager_comment' }
+  { title: '班组长审批', key: 'team_lead_name', width: 90 },
+  { title: '部门经理审批', key: 'dept_manager_name', width: 90 },
+  { title: '管理员确认', key: 'manager_name', width: 90 }
 ]
 
 async function fetchBalance() {

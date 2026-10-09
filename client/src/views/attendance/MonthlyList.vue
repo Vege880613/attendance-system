@@ -102,7 +102,7 @@ const annualBalance = ref(0)
 const availableUnits = ref([])
 
 const offsetForm = ref({
-  offsetType: 'overtime',
+  offsetType: 'annual_leave',
   offsetUnits: 1,
   overtimeUnitIds: []
 })
@@ -122,7 +122,7 @@ const selectedDays = computed(() => {
   return Math.floor(totalUnits / 3) + (totalUnits % 3 > 0 ? 0.5 : 0)
 })
 
-const offsetLabel = ({
+const offsetLabel = (type) => ({
   annual_leave: '年假抵扣',
   compensatory_leave: '调休抵扣'
 }[type] || type)
@@ -186,7 +186,7 @@ async function fetchEmployees() {
 
 async function showOffset(record) {
   currentRecord.value = record
-  offsetForm.value = { offsetType: 'overtime', offsetUnits: 1, overtimeUnitIds: [] }
+  offsetForm.value = { offsetType: 'annual_leave', offsetUnits: 1, overtimeUnitIds: [] }
   offsetVisible.value = true
 
   // 获取年假余额
@@ -214,9 +214,9 @@ async function onOffset() {
   try {
     const payload = {
       userId: currentRecord.value.user_id,
-      date: currentRecord.value.date || currentRecord.value.work_date,
+      date: currentRecord.value.work_date,
       offsetType: offsetForm.value.offsetType,
-      offsetUnits: offsetForm.value.offsetType === 'compensatory_leave' ? selectedDays.value * 2 : offsetForm.value.offsetUnits,
+      offsetUnits: offsetForm.value.offsetType === 'compensatory_leave' ? selectedDays.value : offsetForm.value.offsetUnits,
       overtimeUnitIds: offsetForm.value.overtimeUnitIds
     }
     await attendanceApi.offset(payload)

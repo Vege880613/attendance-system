@@ -59,15 +59,9 @@ router.post('/batch', authRequired, requireRole('manager'), (req, res) => {
 
 router.put('/offset', authRequired, requireRole('manager'), (req, res) => {
   const { userId, date, offsetType, offsetUnits, overtimeUnitIds } = req.body;
-  // offsetType: 'overtime' | 'annual_leave' | 'compensatory_leave'
-  // overtimeUnitIds: 选择的加班条目ID数组（调休时使用）
 
   if (!userId || !date) return res.status(400).json({ message: '缺少用户ID或日期' });
 
-  const units = Number(offsetUnits) || 0;
-  if (units <= 0) return res.status(400).json({ message: '抵扣数量必须大于 0' });
-
-  const daysToConsume = units * 0.5; // 需要抵扣的天数
   const year = new Date(date).getFullYear();
 
   // 查找或创建考勤记录
@@ -76,7 +70,10 @@ router.put('/offset', authRequired, requireRole('manager'), (req, res) => {
 
   try {
     if (offsetType === 'annual_leave') {
-      // 年假抵扣
+      // 年假抵扣：offsetUnits 直接就是天数
+      const daysToConsume = Number(offsetUnits) || 0;
+      if (daysToConsume <= 0) return res.status(400).json({ message: '抵扣天数必须大于 0' });
+
       const bal = db.prepare(
         `SELECT * FROM leave_balances WHERE user_id=? AND leave_type='annual' AND year=?`
       ).get(userId, year);
@@ -86,9 +83,9 @@ router.put('/offset', authRequired, requireRole('manager'), (req, res) => {
       const tx = db.transaction(() => {
         db.prepare('UPDATE leave_balances SET used_days = used_days + ? WHERE id = ?').run(daysToConsume, bal.id);
         if (recordId) {
-          db.prepare('UPDATE attendance_records SET offset_type=?, offset_units=?, is_shortage=0 WHERE id=?').run('annual_leave', units, recordId);
+          db.prepare('UPDATE attendance_records SET offset_type=?, offset_units=?, is_shortage=0 WHERE id=?').run('annual_leave', daysToConsume, recordId);
         } else {
-          const info = db.prepare('INSERT INTO attendance_records (user_id, work_date, effective_hours, is_shortage, offset_type, offset_units) VALUES (?,?,0,0,?,?)').run(userId, date, 'annual_leave', units);
+          const info = db.prepare('INSERT INTO attendance_records (user_id, work_date, effective_hours, is_shortage, offset_type, offset_units) VALUES (?,?,0,0,?,?)').run(userId, date, 'annual_leave', daysToConsume);
           recordId = info.lastInsertRowid;
         }
         // 创建请假记录（用于请假明细展示）
@@ -107,23 +104,26 @@ router.put('/offset', authRequired, requireRole('manager'), (req, res) => {
       if (units.length !== overtimeUnitIds.length) {
         return res.status(400).json({ message: '选择的加班条目不可用' });
       }
-      const totalDays = units.reduce((sum, u) => sum + u.units_count * 0.5, 0);
-      if (Math.abs(totalDays - daysToConsume) > 0.01) {
-        return res.status(400).json({ message: `选择的加班条目累计可抵扣 ${totalDays} 天，与需要抵扣的 ${daysToConsume} 天不匹配` });
+
+      // 计算调休单位对应的天数：3单位=1天，1-2单位=0.5天
+      const totalUnits = units.reduce((sum, u) => sum + u.units_count, 0);
+      const totalDays = Math.floor(totalUnits / 3) + (totalUnits % 3 > 0 ? 0.5 : 0);
+      if (Math.abs(totalDays - Number(offsetUnits)) > 0.01) {
+        return res.status(400).json({ message: `选择的加班条目累计可抵扣 ${totalDays} 天，与需要抵扣的 ${offsetUnits} 天不匹配` });
       }
       const tx = db.transaction(() => {
         for (const u of units) {
           db.prepare("UPDATE overtime_units SET status='used', leave_type_mark='compensatory' WHERE id=?").run(u.id);
         }
-        db.prepare('UPDATE leave_balances SET used_days = used_days + ? WHERE user_id = ? AND leave_type = ? AND year = ?').run(daysToConsume, userId, 'compensatory', year);
+        db.prepare('UPDATE leave_balances SET used_days = used_days + ? WHERE user_id = ? AND leave_type = ? AND year = ?').run(totalDays, userId, 'compensatory', year);
         if (recordId) {
-          db.prepare('UPDATE attendance_records SET offset_type=?, offset_units=?, is_shortage=0 WHERE id=?').run('compensatory_leave', units.length, recordId);
+          db.prepare('UPDATE attendance_records SET offset_type=?, offset_units=?, is_shortage=0 WHERE id=?').run('compensatory_leave', totalDays, recordId);
         } else {
-          const info = db.prepare('INSERT INTO attendance_records (user_id, work_date, effective_hours, is_shortage, offset_type, offset_units) VALUES (?,?,0,0,?,?)').run(userId, date, 'compensatory_leave', units.length);
+          const info = db.prepare('INSERT INTO attendance_records (user_id, work_date, effective_hours, is_shortage, offset_type, offset_units) VALUES (?,?,0,0,?,?)').run(userId, date, 'compensatory_leave', totalDays);
           recordId = info.lastInsertRowid;
         }
         // 创建请假记录（用于请假明细展示）
-        db.prepare(`INSERT INTO attendance_requests (user_id, type, leave_type_used, start_date, end_date, days, status, reason, manager_id, manager_comment, manager_time) VALUES (?, 'leave', 'compensatory', ?, ?, ?, 'entered', '考勤抵扣', ?, '管理员抵扣', datetime('now','localtime'))`).run(userId, date, date, daysToConsume, req.user.id);
+        db.prepare(`INSERT INTO attendance_requests (user_id, type, leave_type_used, start_date, end_date, days, status, reason, manager_id, manager_comment, manager_time) VALUES (?, 'leave', 'compensatory', ?, ?, ?, 'entered', '考勤抵扣', ?, '管理员抵扣', datetime('now','localtime'))`).run(userId, date, date, totalDays, req.user.id);
       });
       tx();
     } else {
