@@ -3,6 +3,9 @@
  * 加班工时/假期抵扣/年假分档 核心计算逻辑
  */
 
+// 标准工作日时长（08:20 上班，17:00 下班 = 8小时40分钟 = 8.67小时）
+const STANDARD_WORK_HOURS = 8.67;
+
 // 加班小时 → 加班单位（每 3 小时 = 1 单位，向下取整）
 function hoursToUnits(hours) {
   return Math.floor(Number(hours) / 3);
@@ -36,9 +39,9 @@ function annualLeaveDays(hireDate, targetYear) {
   return 15;
 }
 
-// 考勤是否达标（有效工时 < 8 小时为短缺）
+// 考勤是否达标（有效工时 < 8.67 小时为短缺，与标准工作日一致）
 function isShortage(effectiveHours) {
-  return Number(effectiveHours) < 8;
+  return Number(effectiveHours) < STANDARD_WORK_HOURS;
 }
 
 // 根据打卡时间计算有效工时（08:20 上班，17:00 下班）
@@ -58,6 +61,7 @@ function calcEffectiveHours(checkIn, checkOut) {
 }
 
 module.exports = {
+  STANDARD_WORK_HOURS,
   hoursToUnits,
   unitsToDays,
   daysToUnits,

@@ -89,6 +89,7 @@
                   <a-tag v-else-if="day.type === 'leave'" color="blue">{{ day.leaveTypeName }}</a-tag>
                   <a-tag v-else-if="day.status === '旷工'" color="red">旷工</a-tag>
                   <a-tag v-else-if="day.isShortage" color="orange">缺卡</a-tag>
+                  <a-tag v-else-if="day.offsetType && day.offsetType !== 'none'" color="green">{{ day.offsetLabel || '已抵扣' }}</a-tag>
                   <a-tag v-else color="green">正常</a-tag>
                 </template>
                 <template v-if="column.key === 'time'">

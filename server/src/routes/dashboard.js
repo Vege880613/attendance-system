@@ -1,5 +1,6 @@
 const db = require('../config/db');
 const { authRequired, requireRole } = require('../middleware/auth');
+const { STANDARD_WORK_HOURS } = require('../utils/businessRules');
 
 const router = require('express').Router();
 
@@ -123,10 +124,23 @@ router.get('/summary', authRequired, requireRole('manager', 'team_lead'), (req, 
         });
       } else if (attendance) {
         // 有考勤记录
-        // 判断状态：>=8.67小时=正常，0-8.67小时=缺卡，<=0=旷工
+        // 判断状态：
+        // 1. 已有抵扣（offset_type != 'none'）→ 已抵扣
+        // 2. >= STANDARD_WORK_HOURS → 正常
+        // 3. > 0 且 < STANDARD_WORK_HOURS → 缺卡
+        // 4. <= 0 → 旷工
         const effectiveHours = attendance.effective_hours;
         let status, isShortage;
-        if (effectiveHours >= 8.67) {
+
+        if (attendance.offset_type && attendance.offset_type !== 'none') {
+          // 已用假期/调休抵扣，不再算缺卡或旷工
+          const offsetLabelMap = {
+            annual_leave: '年假抵扣',
+            compensatory_leave: '调休抵扣'
+          };
+          status = offsetLabelMap[attendance.offset_type] || '已抵扣';
+          isShortage = false;
+        } else if (effectiveHours >= STANDARD_WORK_HOURS) {
           status = '正常';
           isShortage = false;
         } else if (effectiveHours > 0) {
@@ -136,6 +150,11 @@ router.get('/summary', authRequired, requireRole('manager', 'team_lead'), (req, 
           status = '旷工';
           isShortage = true;
         }
+
+        const offsetLabelMap = {
+          annual_leave: '年假抵扣',
+          compensatory_leave: '调休抵扣'
+        };
         dailyDetails.push({
           date: dateStr,
           dayOfWeek,
@@ -147,6 +166,7 @@ router.get('/summary', authRequired, requireRole('manager', 'team_lead'), (req, 
           isShortage,
           offsetType: attendance.offset_type,
           offsetUnits: attendance.offset_units,
+          offsetLabel: offsetLabelMap[attendance.offset_type] || '',
           remark: attendance.remark
         });
       } else {
@@ -162,6 +182,7 @@ router.get('/summary', authRequired, requireRole('manager', 'team_lead'), (req, 
           isShortage: true,
           offsetType: 'none',
           offsetUnits: 0,
+          offsetLabel: '',
           remark: ''
         });
       }

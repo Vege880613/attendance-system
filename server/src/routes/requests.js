@@ -362,8 +362,17 @@ router.put('/:id/confirm', authRequired, requireRole('manager'), (req, res) => {
             db.prepare(`UPDATE overtime_units SET status='used', leave_request_id=?, leave_type_mark='compensatory', leave_dates=? WHERE id=?`).run(request.id, JSON.stringify(leaveDates), u.id);
           }
         }
-        // 更新原申请状态为已录入（不创建新记录）
+
+        // 更新原申请状态为已录入
         db.prepare(`UPDATE attendance_requests SET status='entered', manager_id=?, manager_comment=?, manager_time=datetime('now','localtime') WHERE id=?`).run(req.user.id, '管理员确认', request.id);
+
+        // 拆分为两条明细记录（年假 + 调休）
+        if (annualDays > 0) {
+          db.prepare(`INSERT INTO attendance_requests (user_id, type, leave_type_used, start_date, end_date, days, status, reason, manager_id, manager_comment, manager_time) VALUES (?, 'leave', 'annual', ?, ?, ?, 'entered', '混合抵扣-年假部分', ?, '管理员抵扣', datetime('now','localtime'))`).run(request.user_id, request.start_date, request.end_date, annualDays, req.user.id);
+        }
+        if (compDays > 0) {
+          db.prepare(`INSERT INTO attendance_requests (user_id, type, leave_type_used, start_date, end_date, days, status, reason, manager_id, manager_comment, manager_time) VALUES (?, 'leave', 'compensatory', ?, ?, ?, 'entered', '混合抵扣-调休部分', ?, '管理员抵扣', datetime('now','localtime'))`).run(request.user_id, request.start_date, request.end_date, compDays, req.user.id);
+        }
       }
       // business_trip 和 other 不扣余额
     } else if (request.type === 'special_leave') {
