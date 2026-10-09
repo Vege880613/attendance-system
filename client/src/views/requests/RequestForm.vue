@@ -300,22 +300,16 @@ async function fetchBalance() {
 }
 
 async function onSubmit() {
-  // 验证
-  if (form.type === 'leave' && form.leave_type_used === 'compensatory') {
+  // 验证调休/混合抵扣的加班条目
+  if (form.type === 'leave' && (form.leave_type_used === 'compensatory' || form.leave_type_used === 'mixed')) {
     if (form.overtime_unit_ids.length === 0) {
       message.error('调休申请必须选择加班条目')
       return
     }
-    if (Math.abs(compDaysFromUnits.value - form.days) > 0.01) {
-      message.error(`选择的加班条目累计可抵扣 ${compDaysFromUnits.value} 天，与申请天数 ${form.days} 天不匹配`)
-      return
-    }
-  }
-
-  if (form.type === 'leave' && form.leave_type_used === 'mixed') {
+    // 只校验合计天数：年假 + 调休 === 请假天数
     const totalDeduction = (form.annual_days || 0) + compDaysFromUnits.value
     if (Math.abs(totalDeduction - form.days) > 0.01) {
-      message.error(`年假${form.annual_days || 0}天 + 调休${compDaysFromUnits.value}天 = ${totalDeduction}天，与请假天数${form.days}天不匹配`)
+      message.error(`抵扣天数合计 ${totalDeduction} 天（年假${form.annual_days || 0}天 + 调休${compDaysFromUnits.value}天），与请假天数 ${form.days} 天不匹配`)
       return
     }
   }
