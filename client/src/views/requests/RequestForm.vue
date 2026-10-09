@@ -217,8 +217,8 @@ const compDaysFromUnits = computed(() => {
 
 const compensatoryInfo = computed(() => {
   const totalUnits = selectedUnits.value.reduce((sum, u) => sum + u.units_count, 0)
-  const days = Math.floor(totalUnits / 3) + (totalUnits % 3) * 0.5
-  return `已选 ${selectedUnits.value.length} 条加班单位，累计可抵扣 ${days} 天（3单位=1天，1单位=0.5天）`
+  const days = Math.floor(totalUnits / 3) + (totalUnits % 3 > 0 ? 0.5 : 0)
+  return `已选 ${selectedUnits.value.length} 条加班单位，累计可抵扣 ${days} 天（3单位=1天，1-2单位=0.5天）`
 })
 
 function filterOption(input, option) {
