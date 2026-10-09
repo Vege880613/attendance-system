@@ -170,9 +170,9 @@ router.get('/summary', authRequired, requireRole('manager', 'team_lead'), (req, 
     // 统计汇总
     const workDays = dailyDetails.filter(d => d.type !== 'weekend').length;
     const normalDays = dailyDetails.filter(d => d.status === '正常').length;
-    const shortageDays = dailyDetails.filter(d => d.isShortage && d.type !== 'weekend').length;
+    const absentDays = dailyDetails.filter(d => d.status === '旷工').length;
+    const shortageDays = dailyDetails.filter(d => d.isShortage && d.type !== 'weekend' && d.status !== '旷工').length;
     const leaveDays = dailyDetails.filter(d => d.type === 'leave').length;
-    const absentDays = dailyDetails.filter(d => d.type === 'absent').length;
 
     // 假期余额
     const annualBalance = userBalances.find(b => b.leave_type === 'annual');
