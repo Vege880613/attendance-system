@@ -37,6 +37,18 @@ router.post('/', authRequired, (req, res) => {
         message: `选择的加班条目累计可抵扣 ${totalDays} 天，与申请天数 ${days} 天不匹配`
       });
     }
+
+    // 验证调休余额是否足够
+    const year = new Date(start_date).getFullYear();
+    const compBal = db.prepare(
+      `SELECT * FROM leave_balances WHERE user_id=? AND leave_type='compensatory' AND year=?`
+    ).get(req.user.id, year);
+    const compRemaining = compBal ? compBal.entitled_days - compBal.used_days : 0;
+    if (compRemaining < totalDays) {
+      return res.status(400).json({
+        message: `调休余额不足，当前剩余 ${compRemaining} 天，需要 ${totalDays} 天`
+      });
+    }
   }
 
   // 年假余额校验
