@@ -33,6 +33,12 @@ router.get('/summary', authRequired, requireRole('manager', 'team_lead'), (req, 
     WHERE strftime('%Y-%m', work_date) = ?
   `).all(yearMonth);
 
+  // 获取该月所有节假日
+  const holidays = db.prepare(`
+    SELECT * FROM holidays
+    WHERE strftime('%Y-%m', date) = ?
+  `).all(yearMonth);
+
   // 获取该月所有已录入的请假申请（只查请假，不含加班）
   const leaveRequests = db.prepare(`
     SELECT * FROM attendance_requests
@@ -77,7 +83,18 @@ router.get('/summary', authRequired, requireRole('manager', 'team_lead'), (req, 
       // 查找该日是否在请假范围内
       const leave = userLeaves.find(l => dateStr >= l.start_date && dateStr <= l.end_date);
 
-      if (isWeekend) {
+      // 查找该日是否为节假日
+      const holiday = holidays.find(h => h.date === dateStr);
+
+      if (holiday && holiday.type === "holiday") {
+        // 法定假日
+        dailyDetails.push({
+          date: dateStr,
+          dayOfWeek,
+          type: "holiday",
+          status: holiday.name || "节假日"
+        });
+      } else if (isWeekend && !holiday) {
         dailyDetails.push({
           date: dateStr,
           dayOfWeek,

@@ -16,6 +16,7 @@ const projectRoutes = require('./routes/projects');
 const excelImportRoutes = require('./routes/excelImport');
 const leaveDetailRoutes = require('./routes/leaveDetail');
 const dashboardRoutes = require('./routes/dashboard');
+const holidayRoutes = require('./routes/holidays');
 
 const app = express();
 
@@ -37,6 +38,7 @@ app.use('/api/projects', projectRoutes);
 app.use('/api/excel', excelImportRoutes);
 app.use('/api/leave-detail', leaveDetailRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/holidays', holidayRoutes);
 
 app.use((err, req, res, next) => {
   console.error('Server error:', err);

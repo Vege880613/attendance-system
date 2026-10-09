@@ -105,7 +105,57 @@ db.exec(`
     status TEXT DEFAULT 'active' CHECK(status IN ('active','completed','paused')),
     created_at TEXT DEFAULT (datetime('now','localtime'))
   );
+
+  -- 中国节假日表
+  CREATE TABLE IF NOT EXISTS holidays (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    date TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    type TEXT NOT NULL CHECK(type IN ('holiday','workday')),
+    year INTEGER NOT NULL
+  );
 `);
+
+// 插入 2026 年中国节假日
+const holidays2026 = [
+  { date: '2026-01-01', name: '元旦', type: 'holiday' },
+  { date: '2026-02-16', name: '春节', type: 'holiday' },
+  { date: '2026-02-17', name: '春节', type: 'holiday' },
+  { date: '2026-02-18', name: '春节', type: 'holiday' },
+  { date: '2026-02-19', name: '春节', type: 'holiday' },
+  { date: '2026-02-20', name: '春节', type: 'holiday' },
+  { date: '2026-02-21', name: '春节', type: 'holiday' },
+  { date: '2026-02-22', name: '春节', type: 'holiday' },
+  { date: '2026-02-14', name: '春节调休', type: 'workday' },
+  { date: '2026-02-28', name: '春节调休', type: 'workday' },
+  { date: '2026-04-04', name: '清明节', type: 'holiday' },
+  { date: '2026-04-05', name: '清明节', type: 'holiday' },
+  { date: '2026-04-06', name: '清明节', type: 'holiday' },
+  { date: '2026-05-01', name: '劳动节', type: 'holiday' },
+  { date: '2026-05-02', name: '劳动节', type: 'holiday' },
+  { date: '2026-05-03', name: '劳动节', type: 'holiday' },
+  { date: '2026-05-04', name: '劳动节', type: 'holiday' },
+  { date: '2026-05-05', name: '劳动节', type: 'holiday' },
+  { date: '2026-04-26', name: '劳动节调休', type: 'workday' },
+  { date: '2026-06-19', name: '端午节', type: 'holiday' },
+  { date: '2026-06-20', name: '端午节', type: 'holiday' },
+  { date: '2026-06-21', name: '端午节', type: 'holiday' },
+  { date: '2026-09-25', name: '中秋节', type: 'holiday' },
+  { date: '2026-09-26', name: '中秋节', type: 'holiday' },
+  { date: '2026-09-27', name: '中秋节', type: 'holiday' },
+  { date: '2026-09-20', name: '中秋调休', type: 'workday' },
+  { date: '2026-10-01', name: '国庆节', type: 'holiday' },
+  { date: '2026-10-02', name: '国庆节', type: 'holiday' },
+  { date: '2026-10-03', name: '国庆节', type: 'holiday' },
+  { date: '2026-10-04', name: '国庆节', type: 'holiday' },
+  { date: '2026-10-05', name: '国庆节', type: 'holiday' },
+  { date: '2026-10-06', name: '国庆节', type: 'holiday' },
+  { date: '2026-10-07', name: '国庆节', type: 'holiday' },
+  { date: '2026-10-10', name: '国庆调休', type: 'workday' },
+];
+
+const insertHoliday = db.prepare('INSERT OR IGNORE INTO holidays (date, name, type, year) VALUES (?, ?, ?, 2026)');
+holidays2026.forEach(h => insertHoliday.run(h.date, h.name, h.type));
 
 // 安全添加列（如果已存在则忽略错误）
 try {

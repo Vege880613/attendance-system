@@ -17,7 +17,12 @@
     >
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'work_date'">
-          {{ record.work_date }}
+          <span :style="{ color: record.type === 'holiday' ? '#cf1322' : 'inherit' }">
+            {{ record.work_date }}
+            <span v-if="record.holiday_name" style="color:#cf1322;font-size:12px;">
+              ({{ record.holiday_name }})
+            </span>
+          </span>
         </template>
         <template v-if="column.key === 'effective_hours'">
           <span :style="{ color: record.is_shortage ? '#cf1322' : 'inherit', fontWeight: record.is_shortage ? 600 : 400 }">
@@ -88,7 +93,7 @@ import { ref, computed, onMounted } from 'vue'
 import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import { useAuthStore } from '../../stores/auth'
-import { attendanceApi, userApi, overtimeApi, leaveApi } from '../../api'
+import { attendanceApi, userApi, overtimeApi, leaveApi, holidayApi } from '../../api'
 
 const authStore = useAuthStore()
 const yearMonth = ref(dayjs())
@@ -142,6 +147,10 @@ async function fetchList() {
   const params = { yearMonth: ym, userId: selectedUser.value }
   const res = await attendanceApi.list(params)
 
+  // 获取节假日
+  const holidayRes = await holidayApi.list({ year: yearMonth.value.year() })
+  const holidays = holidayRes.list
+
   // 获取该月所有工作日，补充缺失的日期（无考勤的显示为旷工）
   const [year, month] = ym.split('-').map(Number)
   const daysInMonth = new Date(year, month, 0).getDate()
@@ -151,8 +160,26 @@ async function fetchList() {
     const dateStr = `${ym}-${String(d).padStart(2, '0')}`
     const dayOfWeek = new Date(dateStr).getDay()
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
+    const holiday = holidays.find(h => h.date === dateStr)
 
-    if (isWeekend) continue // 跳过周末
+    // 跳过法定假日
+    if (holiday && holiday.type === 'holiday') {
+      allRecords.push({
+        id: null,
+        user_id: selectedUser.value,
+        work_date: dateStr,
+        type: 'holiday',
+        holiday_name: holiday.name,
+        is_shortage: 0,
+        offset_type: 'none'
+      })
+      continue
+    }
+
+    // 跳过周末（除非是调休上班日）
+    if (isWeekend && !(holiday && holiday.type === 'workday')) {
+      continue
+    }
 
     const existing = res.list.find(r => r.work_date === dateStr)
     if (existing) {

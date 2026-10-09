@@ -67,3 +67,9 @@ export const leaveDetailApi = {
 export const dashboardApi = {
   summary: (params) => request.get('/dashboard/summary', { params })
 }
+
+export const holidayApi = {
+  list: (params) => request.get('/holidays', { params }),
+  create: (data) => request.post('/holidays', data),
+  delete: (id) => request.delete(`/holidays/${id}`)
+}
