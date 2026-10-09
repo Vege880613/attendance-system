@@ -87,7 +87,7 @@
                 <template v-if="column.key === 'status'">
                   <a-tag v-if="day.type === 'weekend'" color="default">休息</a-tag>
                   <a-tag v-else-if="day.type === 'leave'" color="blue">{{ day.leaveTypeName }}</a-tag>
-                  <a-tag v-else-if="day.type === 'absent'" color="red">旷工</a-tag>
+                  <a-tag v-else-if="day.status === '旷工'" color="red">旷工</a-tag>
                   <a-tag v-else-if="day.isShortage" color="orange">缺卡</a-tag>
                   <a-tag v-else color="green">正常</a-tag>
                 </template>
