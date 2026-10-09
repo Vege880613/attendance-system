@@ -5,6 +5,21 @@ require('dotenv').config();
 // 加载数据库配置（自动建表）
 require('./config/db');
 
+// 确保 admin 用户存在
+const bcrypt = require('bcryptjs');
+const db = require('./config/db');
+const ensureAdmin = () => {
+  const admin = db.prepare('SELECT * FROM users WHERE username = ?').get('admin');
+  if (!admin) {
+    const hash = bcrypt.hashSync('admin123', 10);
+    db.prepare(
+      "INSERT INTO users (username, password_hash, name, role, hire_date, status) VALUES ('admin', ?, '系统管理员', 'manager', '2020-01-01', 'active')"
+    ).run(hash);
+    console.log('✅ 已创建默认管理员账号 (admin/admin123)');
+  }
+};
+ensureAdmin();
+
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const teamRoutes = require('./routes/teams');
