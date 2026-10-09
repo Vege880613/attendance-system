@@ -25,9 +25,10 @@
           </span>
         </template>
         <template v-if="column.key === 'effective_hours'">
-          <span :style="{ color: record.is_shortage ? '#cf1322' : 'inherit', fontWeight: record.is_shortage ? 600 : 400 }">
+          <span :style="{ color: record.effective_hours <= 0 ? '#cf1322' : (record.is_shortage ? '#faad14' : 'inherit'), fontWeight: record.is_shortage ? 600 : 400 }">
             {{ record.effective_hours }}h
-            <span v-if="record.is_shortage">⚠ 短缺</span>
+            <span v-if="record.effective_hours <= 0" style="color:#cf1322;">⚠ 旷工</span>
+            <span v-else-if="record.is_shortage" style="color:#faad14;">⚠ 缺卡</span>
           </span>
         </template>
         <template v-if="column.key === 'offset'">
