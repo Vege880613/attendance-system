@@ -8,9 +8,12 @@ function hoursToUnits(hours) {
   return Math.floor(Number(hours) / 3);
 }
 
-// 加班单位 → 可抵扣天数（1 单位 = 0.5 天）
+// 加班单位 → 可抵扣天数
+// 规则：3单位=1天，1-2单位=0.5天
+// 1单位=0.5天，2单位=0.5天，3单位=1天，4-5单位=1.5天，6单位=2天
 function unitsToDays(units) {
-  return Number(units) * 0.5;
+  const u = Number(units);
+  return Math.floor(u / 3) + (u % 3 > 0 ? 0.5 : 0);
 }
 
 // 所需天数 → 需消耗的加班单位
