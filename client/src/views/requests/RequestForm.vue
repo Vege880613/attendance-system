@@ -273,8 +273,8 @@ function calcDays() {
     }
   } else {
     // 跨天
-    days += form.start_half === 'am' ? 1 : 0.5  // 开始天
-    days += form.end_half === 'pm' ? 1 : 0      // 结束天
+    days += form.start_half === 'am' ? 1 : 0.5  // 开始天：AM=全天，PM=半天
+    days += form.end_half === 'pm' ? 1 : 0.5    // 结束天：PM=全天，AM=半天
     days += (diffDays - 1) * 1                   // 中间天
   }
 
