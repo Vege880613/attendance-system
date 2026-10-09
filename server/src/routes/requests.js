@@ -257,11 +257,11 @@ router.put('/:id/confirm', authRequired, requireRole('manager'), (req, res) => {
 
       if (request.leave_type_used === 'annual') {
         // 年假：扣减年假余额
-        const bal = db.prepare(`SELECT * FROM leave_balances WHERE user_id=? AND leave_type='annual' AND year=?`).get(request.user_id, year);
+        const bal = db.prepare(`SELECT * FROM leave_balances WHERE user_type='annual' AND year=?`).get(request.user_id, year);
         if (!bal || (bal.entitled_days - bal.used_days) < days) throw new Error('年假余额不足');
         db.prepare('UPDATE leave_balances SET used_days = used_days + ? WHERE id = ?').run(days, bal.id);
-        // 创建请假记录（用于请假明细展示）
-        db.prepare(`INSERT INTO attendance_requests (user_id, type, leave_type_used, start_date, end_date, days, status, reason, manager_id, manager_comment, manager_time) VALUES (?, 'leave', 'annual', ?, ?, ?, 'entered', '考勤抵扣', ?, '管理员抵扣', datetime('now','localtime'))`).run(request.user_id, request.start_date, request.end_date, days, req.user.id);
+        // 更新原申请状态为已录入（不创建新记录）
+        db.prepare(`UPDATE attendance_requests SET status='entered', manager_id=?, manager_comment=?, manager_time=datetime('now','localtime') WHERE id=?`).run(req.user.id, '管理员确认', request.id);
       } else if (request.leave_type_used === 'compensatory') {
         // 调休：扣减调休余额 + 标记加班条目为已使用
         let bal = db.prepare(`SELECT * FROM leave_balances WHERE user_id=? AND leave_type='compensatory' AND year=?`).get(request.user_id, year);
@@ -307,8 +307,8 @@ router.put('/:id/confirm', authRequired, requireRole('manager'), (req, res) => {
         for (const u of usedUnits) {
           db.prepare(`UPDATE overtime_units SET status='used', leave_request_id=?, leave_type_mark='compensatory', leave_dates=? WHERE id=?`).run(request.id, JSON.stringify(leaveDates), u.id);
         }
-        // 创建请假记录（用于请假明细展示）
-        db.prepare(`INSERT INTO attendance_requests (user_id, type, leave_type_used, start_date, end_date, days, status, reason, manager_id, manager_comment, manager_time) VALUES (?, 'leave', 'compensatory', ?, ?, ?, 'entered', '考勤抵扣', ?, '管理员抵扣', datetime('now','localtime'))`).run(request.user_id, request.start_date, request.end_date, days, req.user.id);
+        // 更新原申请状态为已录入（不创建新记录）
+        db.prepare(`UPDATE attendance_requests SET status='entered', manager_id=?, manager_comment=?, manager_time=datetime('now','localtime') WHERE id=?`).run(req.user.id, '管理员确认', request.id);
       } else if (request.leave_type_used === 'mixed') {
         // 混合抵扣：年假 + 调休
         const annualDays = Number(request.annual_days) || 0;
@@ -359,14 +359,8 @@ router.put('/:id/confirm', authRequired, requireRole('manager'), (req, res) => {
             db.prepare(`UPDATE overtime_units SET status='used', leave_request_id=?, leave_type_mark='compensatory', leave_dates=? WHERE id=?`).run(request.id, JSON.stringify(leaveDates), u.id);
           }
         }
-
-        // 创建请假记录（用于请假明细展示）
-        if (annualDays > 0) {
-          db.prepare(`INSERT INTO attendance_requests (user_id, type, leave_type_used, start_date, end_date, days, status, reason, manager_id, manager_comment, manager_time) VALUES (?, 'leave', 'annual', ?, ?, ?, 'entered', '混合抵扣-年假部分', ?, '管理员抵扣', datetime('now','localtime'))`).run(request.user_id, request.start_date, request.end_date, annualDays, req.user.id);
-        }
-        if (compDays > 0) {
-          db.prepare(`INSERT INTO attendance_requests (user_id, type, leave_type_used, start_date, end_date, days, status, reason, manager_id, manager_comment, manager_time) VALUES (?, 'leave', 'compensatory', ?, ?, ?, 'entered', '混合抵扣-调休部分', ?, '管理员抵扣', datetime('now','localtime'))`).run(request.user_id, request.start_date, request.end_date, compDays, req.user.id);
-        }
+        // 更新原申请状态为已录入（不创建新记录）
+        db.prepare(`UPDATE attendance_requests SET status='entered', manager_id=?, manager_comment=?, manager_time=datetime('now','localtime') WHERE id=?`).run(req.user.id, '管理员确认', request.id);
       }
       // business_trip 和 other 不扣余额
     } else if (request.type === 'special_leave') {
