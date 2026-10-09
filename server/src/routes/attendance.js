@@ -122,6 +122,20 @@ router.put('/offset', authRequired, requireRole('manager'), (req, res) => {
       if (Math.abs(totalDays - Number(offsetUnits)) > 0.01) {
         return res.status(400).json({ message: `选择的加班条目累计可抵扣 ${totalDays} 天，与需要抵扣的 ${offsetUnits} 天不匹配` });
       }
+      // 检查调休余额是否足够 - 应享天数根据已批准的加班单位动态计算
+      const approvedOvertime = db.prepare(`
+        SELECT COALESCE(SUM(units_count), 0) as total_units
+        FROM overtime_units
+        WHERE user_id = ? AND year = ? AND status = 'approved'
+      `).get(userId, year);
+      const entitledCompDays = Math.floor(approvedOvertime.total_units / 3) * 1 + (approvedOvertime.total_units % 3 > 0 ? 0.5 : 0);
+      const compBal = db.prepare(
+        `SELECT * FROM leave_balances WHERE user_id=? AND leave_type='compensatory' AND year=?`
+      ).get(userId, year);
+      const compUsed = compBal ? compBal.used_days : 0;
+      if ((entitledCompDays - compUsed) < totalDays) {
+        return res.status(400).json({ message: `调休余额不足（剩余 ${(entitledCompDays - compUsed).toFixed(1)} 天，需要 ${totalDays} 天）` });
+      }
       const tx = db.transaction(() => {
         for (const u of units) {
           db.prepare("UPDATE overtime_units SET status='used', leave_type_mark='compensatory' WHERE id=?").run(u.id);
