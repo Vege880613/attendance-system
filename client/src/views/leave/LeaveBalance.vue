@@ -113,12 +113,15 @@ const typeDesc = (item) => ({
 }[item.leave_type] || '')
 
 const detailColumns = [
-  { title: '日期范围', key: 'date_range', width: 180 },
-  { title: '天数', dataIndex: 'days', key: 'days', width: 60 },
+  { title: '日期范围', key: 'date_range', width: 160 },
+  { title: '天数', dataIndex: 'days', key: 'days', width: 50 },
   { title: '原因', dataIndex: 'reason', key: 'reason' },
-  { title: '班组长审批', key: 'team_lead_name', width: 90 },
-  { title: '部门经理审批', key: 'dept_manager_name', width: 90 },
-  { title: '管理员确认', key: 'manager_name', width: 90 }
+  { title: '班组长审批', key: 'team_lead_name', width: 80 },
+  { title: '班组长意见', dataIndex: 'team_lead_comment', key: 'team_lead_comment' },
+  { title: '部门经理审批', key: 'dept_manager_name', width: 80 },
+  { title: '部门经理意见', dataIndex: 'dept_manager_comment', key: 'dept_manager_comment' },
+  { title: '管理员确认', key: 'manager_name', width: 80 },
+  { title: '管理员意见', dataIndex: 'manager_comment', key: 'manager_comment' }
 ]
 
 async function fetchBalance() {
