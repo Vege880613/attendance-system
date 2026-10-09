@@ -64,7 +64,18 @@ router.put('/offset', authRequired, requireRole('manager'), (req, res) => {
 
   const year = new Date(date).getFullYear();
 
-  // 查找或创建考勤记录
+  // 检查该日期是否有请假记录 - 有请假则不允许抵扣
+  const leaveRecord = db.prepare(`
+    SELECT * FROM attendance_requests
+    WHERE user_id = ? AND type = 'leave' AND status = 'entered'
+      AND ? BETWEEN start_date AND end_date
+    LIMIT 1
+  `).get(userId, date);
+  if (leaveRecord) {
+    return res.status(400).json({ message: '该日期已请假，无法抵扣' });
+  }
+
+  // 查找考勤记录
   let record = db.prepare('SELECT * FROM attendance_records WHERE user_id = ? AND work_date = ?').get(userId, date);
   let recordId = record ? record.id : null;
 
