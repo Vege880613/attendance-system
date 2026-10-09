@@ -45,7 +45,6 @@
       <a-form layout="vertical">
         <a-form-item label="抵扣方式">
           <a-radio-group v-model:value="offsetForm.offsetType" @change="onOffsetTypeChange">
-            <a-radio value="overtime">加班单位抵扣</a-radio>
             <a-radio value="annual_leave">年假抵扣</a-radio>
             <a-radio value="compensatory_leave">调休抵扣（需选加班条目）</a-radio>
           </a-radio-group>
@@ -58,7 +57,7 @@
 
         <!-- 调休：选择加班条目 -->
         <a-form-item v-if="offsetForm.offsetType === 'compensatory_leave'" label="选择加班条目">
-          <a-alert type="info" show-icon :message="`已选 ${selectedUnits.length} 条，累计可抵扣 ${selectedDays} 天`" />
+          <a-alert type="info" show-icon :message="`已选 ${selectedUnits.length} 条，累计可抵扣 ${selectedDays} 天（1-2单位=0.5天，3单位=1天）`" />
           <a-table
             :columns="unitColumns"
             :data-source="availableUnits"
@@ -70,7 +69,7 @@
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'convert'">
-                <span style="color:#52c41a;">{{ record.units_count * 0.5 }}天</span>
+                <span style="color:#52c41a;">0.5天</span>
               </template>
             </template>
           </a-table>
@@ -119,11 +118,11 @@ const selectedUnits = computed(() => {
 })
 
 const selectedDays = computed(() => {
-  return selectedUnits.value.reduce((sum, u) => sum + u.units_count * 0.5, 0)
+  const totalUnits = selectedUnits.value.reduce((sum, u) => sum + u.units_count, 0)
+  return Math.floor(totalUnits / 3) + (totalUnits % 3 > 0 ? 0.5 : 0)
 })
 
-const offsetLabel = (type) => ({
-  overtime: '加班抵扣',
+const offsetLabel = ({
   annual_leave: '年假抵扣',
   compensatory_leave: '调休抵扣'
 }[type] || type)

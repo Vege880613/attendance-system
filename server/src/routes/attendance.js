@@ -75,27 +75,7 @@ router.put('/offset', authRequired, requireRole('manager'), (req, res) => {
   let recordId = record ? record.id : null;
 
   try {
-    if (offsetType === 'overtime') {
-      // 加班单位抵扣
-      const available = db.prepare(
-        `SELECT id FROM overtime_units WHERE user_id = ? AND status = 'approved' ORDER BY work_date ASC LIMIT ?`
-      ).all(userId, units);
-      if (available.length < units) {
-        return res.status(400).json({ message: `可用加班单位不足，当前可用 ${available.length} 个` });
-      }
-      const tx = db.transaction(() => {
-        for (const u of available) {
-          db.prepare("UPDATE overtime_units SET status='used' WHERE id=?").run(u.id);
-        }
-        if (recordId) {
-          db.prepare('UPDATE attendance_records SET offset_type=?, offset_units=?, is_shortage=0 WHERE id=?').run('overtime', units, recordId);
-        } else {
-          const info = db.prepare('INSERT INTO attendance_records (user_id, work_date, effective_hours, is_shortage, offset_type, offset_units) VALUES (?,?,0,0,?,?)').run(userId, date, 'overtime', units);
-          recordId = info.lastInsertRowid;
-        }
-      });
-      tx();
-    } else if (offsetType === 'annual_leave') {
+    if (offsetType === 'annual_leave') {
       // 年假抵扣
       const bal = db.prepare(
         `SELECT * FROM leave_balances WHERE user_id=? AND leave_type='annual' AND year=?`
