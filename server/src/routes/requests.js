@@ -55,13 +55,14 @@ router.post('/', authRequired, (req, res) => {
     }
   }
 
-  // 年假余额校验
-  if (type === 'leave' && leave_type_used === 'annual') {
+  // 年假余额校验（包括纯年假和混合抵扣中的年假部分）
+  if (type === 'leave' && (leave_type_used === 'annual' || leave_type_used === 'mixed')) {
     const year = new Date(start_date).getFullYear();
     const bal = db.prepare(`SELECT * FROM leave_balances WHERE user_id=? AND leave_type='annual' AND year=?`).get(req.user.id, year);
     const balDays = bal ? bal.entitled_days - bal.used_days : 0;
-    if (balDays < Number(days)) {
-      return res.status(400).json({ message: `年假余额不足，当前剩余 ${balDays} 天` });
+    const annualDaysNeeded = leave_type_used === 'mixed' ? (Number(annual_days) || 0) : Number(days);
+    if (balDays < annualDaysNeeded) {
+      return res.status(400).json({ message: `年假余额不足，当前剩余 ${balDays} 天，需要 ${annualDaysNeeded} 天` });
     }
   }
 
