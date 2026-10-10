@@ -260,7 +260,7 @@ router.put('/:id/confirm', authRequired, requireRole('manager'), (req, res) => {
 
       if (request.leave_type_used === 'annual') {
         // 年假：扣减年假余额
-        const bal = db.prepare(`SELECT * FROM leave_balances WHERE user_type='annual' AND year=?`).get(request.user_id, year);
+        const bal = db.prepare(`SELECT * FROM leave_balances WHERE user_id=? AND leave_type='annual' AND year=?`).get(request.user_id, year);
         if (!bal || (bal.entitled_days - bal.used_days) < days) throw new Error('年假余额不足');
         db.prepare('UPDATE leave_balances SET used_days = used_days + ? WHERE id = ?').run(days, bal.id);
         // 更新原申请状态为已录入（不创建新记录）
