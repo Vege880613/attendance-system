@@ -327,26 +327,29 @@ router.put('/:id/confirm', authRequired, requireRole('manager'), (req, res) => {
         // 扣减调休余额 + 标记加班条目
         if (compDays > 0) {
           let compBal = db.prepare(`SELECT * FROM leave_balances WHERE user_id=? AND leave_type='compensatory' AND year=?`).get(request.user_id, year);
-          // 计算可用调休天数（从加班单位）
-          const allOvertime = db.prepare(`SELECT COUNT(*) as cnt FROM overtime_units WHERE user_id = ? AND status = 'approved' AND strftime('%Y', work_date) = ?`).get(request.user_id, String(year));
-          const availableCompDays = Math.floor(allOvertime.cnt / 3) + (allOvertime.cnt % 3 > 0 ? 0.5 : 0);
+
+          // 计算可用调休天数（从所有加班单位，扣除已使用的）
+          const allOvertime = db.prepare(`SELECT COUNT(*) as cnt FROM overtime_units WHERE user_id = ? AND strftime('%Y', work_date) = ?`).get(request.user_id, String(year));
+          const usedOvertime = db.prepare(`SELECT COUNT(*) as cnt FROM overtime_units WHERE user_id = ? AND status = 'used' AND strftime('%Y', work_date) = ?`).get(request.user_id, String(year));
+          const availableUnits = allOvertime.cnt - usedOvertime.cnt;
+          const availableCompDays = Math.floor(availableUnits / 3) + (availableUnits % 3 > 0 ? 0.5 : 0);
 
           if (!compBal) {
             // 创建调休余额记录
             const info = db.prepare(`INSERT INTO leave_balances (user_id, leave_type, year, entitled_days, used_days) VALUES (?, 'compensatory', ?, ?, 0)`).run(request.user_id, year, availableCompDays);
             compBal = db.prepare(`SELECT * FROM leave_balances WHERE id=?`).get(info.lastInsertRowid);
+          } else {
+            // 更新应享天数（基于当前可用加班单位）
+            if (compBal.entitled_days < availableCompDays) {
+              db.prepare('UPDATE leave_balances SET entitled_days = ? WHERE id = ?').run(availableCompDays, compBal.id);
+              compBal.entitled_days = availableCompDays;
+            }
           }
 
           // 检查余额是否足够
           const remaining = compBal.entitled_days - compBal.used_days;
           if (remaining < compDays) {
-            // 余额不足，尝试重新计算
-            if (availableCompDays >= compDays) {
-              db.prepare('UPDATE leave_balances SET entitled_days = ? WHERE id = ?').run(availableCompDays, compBal.id);
-              compBal.entitled_days = availableCompDays;
-            } else {
-              throw new Error('调休余额不足');
-            }
+            throw new Error('调休余额不足');
           }
 
           db.prepare('UPDATE leave_balances SET used_days = used_days + ? WHERE id = ?').run(compDays, compBal.id);
