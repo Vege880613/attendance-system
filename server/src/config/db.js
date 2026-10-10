@@ -19,8 +19,6 @@ if (fs.existsSync(seedPath)) {
     console.log('✅ 已导入种子数据');
   }
 }
-
-// 先创建所有表
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
