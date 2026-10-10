@@ -59,8 +59,8 @@ const columns = [
   { title: '操作', key: 'action', width: 120 }
 ]
 
-const leaveTypeLabel = (t) => ({ annual: '年假', compensatory: '调休', business_trip: '公差', other: '其他' }[t])
-const leaveTypeColor = (t) => ({ annual: 'blue', compensatory: 'purple', business_trip: 'orange', other: 'default' }[t])
+const leaveTypeLabel = (t) => ({ annual: '年假', compensatory: '调休', mixed: '混合抵扣（年假+调休）', business_trip: '公差', other: '其他' }[t])
+const leaveTypeColor = (t) => ({ annual: 'blue', compensatory: 'purple', mixed: 'cyan', business_trip: 'orange', other: 'default' }[t])
 
 function showModal(record, act) {
   current.value = record

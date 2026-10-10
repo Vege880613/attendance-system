@@ -75,8 +75,8 @@ const columns = [
 ]
 
 const typeLabel = (t) => ({ overtime: '加班', leave: '休假' }[t])
-const leaveTypeLabel = (t) => ({ annual: '年假', compensatory: '调休', business_trip: '公差', other: '其他', none: '无' }[t])
-const leaveTypeColor = (t) => ({ annual: 'blue', compensatory: 'purple', business_trip: 'orange', other: 'default' }[t])
+const leaveTypeLabel = (t) => ({ annual: '年假', compensatory: '调休', mixed: '混合抵扣（年假+调休）', business_trip: '公差', other: '其他', none: '无' }[t])
+const leaveTypeColor = (t) => ({ annual: 'blue', compensatory: 'purple', mixed: 'cyan', business_trip: 'orange', other: 'default' }[t])
 
 function showModal(record, act) {
   current.value = record
