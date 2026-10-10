@@ -293,4 +293,45 @@ const ensureUsers = () => {
 };
 ensureUsers();
 
+// 确保年假余额存在
+const ensureLeaveBalances = () => {
+  const count = db.prepare("SELECT COUNT(*) as cnt FROM leave_balances WHERE leave_type='annual'").get().cnt;
+  if (count === 0) {
+    const users = db.prepare("SELECT id, hire_date FROM users WHERE role='employee' OR role='team_lead'").all();
+    const insert = db.prepare('INSERT INTO leave_balances (user_id, leave_type, year, entitled_days, used_days) VALUES (?, ?, ?, ?, ?)');
+    users.forEach(u => {
+      const years = 2026 - new Date(u.hire_date).getFullYear();
+      const entitled = years < 1 ? 0 : years < 10 ? 5 : years < 20 ? 10 : 15;
+      insert.run(u.id, 'annual', 2026, entitled, 0);
+    });
+    console.log(`✅ 已创建 ${users.length} 条年假余额数据`);
+  }
+};
+ensureLeaveBalances();
+
+// 确保测试用加班单位存在
+const ensureTestOvertime = () => {
+  const count = db.prepare("SELECT COUNT(*) as cnt FROM overtime_units WHERE user_id = 22").get().cnt;
+  if (count === 0) {
+    const insert = db.prepare('INSERT INTO overtime_units (user_id, work_date, hours, units_count, status) VALUES (?, ?, ?, ?, ?)');
+    insert.run(22, '2026-10-20', 3, 1, 'approved');
+    insert.run(22, '2026-10-21', 3, 1, 'approved');
+    insert.run(22, '2026-10-22', 3, 1, 'approved');
+    console.log('✅ 已创建测试用加班单位');
+  }
+};
+ensureTestOvertime();
+
+// 确保测试用考勤记录存在
+const ensureTestAttendance = () => {
+  const count = db.prepare("SELECT COUNT(*) as cnt FROM attendance_records WHERE user_id = 22").get().cnt;
+  if (count === 0) {
+    const insert = db.prepare('INSERT INTO attendance_records (user_id, work_date, check_in, check_out, effective_hours, is_shortage) VALUES (?, ?, ?, ?, ?, ?)');
+    const days = ['2026-10-09', '2026-10-10', '2026-10-11', '2026-10-12', '2026-10-13', '2026-10-19', '2026-10-20', '2026-10-21', '2026-10-22', '2026-10-23'];
+    days.forEach(d => insert.run(22, d, '08:20', '17:00', 8.67, 0));
+    console.log(`✅ 已创建 ${days.length} 条测试用考勤记录`);
+  }
+};
+ensureTestAttendance();
+
 module.exports = db;
