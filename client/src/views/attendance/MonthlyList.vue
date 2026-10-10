@@ -199,6 +199,7 @@ async function fetchList() {
       const leaveTypeMap = {
         annual: '年假',
         compensatory: '调休',
+        mixed: '混合抵扣（年假+调休）',
         marriage: '婚假',
         business_trip: '公差',
         other: '其他'
