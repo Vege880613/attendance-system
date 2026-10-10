@@ -35,7 +35,7 @@ const columns = [
 ]
 
 const typeLabel = (t) => ({ overtime: '加班', leave: '休假', special_leave: '婚丧嫁娶' }[t])
-const leaveTypeLabel = (t) => ({ annual: '年假', compensatory: '调休', business_trip: '公差', other: '其他', mixed: '混合', none: '-' }[t] || '-')
+const leaveTypeLabel = (t) => ({ annual: '年假', compensatory: '调休', business_trip: '公差', other: '其他', mixed: '混合抵扣（年假+调休）', none: '-' }[t] || '-')
 const statusLabel = (s) => ({ pending: '待审核', approved: '已审核', rejected: '已驳回', entered: '已录入' }[s])
 const statusColor = (s) => ({ pending: 'orange', approved: 'blue', rejected: 'red', entered: 'green' }[s])
 
