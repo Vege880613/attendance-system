@@ -346,9 +346,13 @@ router.put('/:id/confirm', authRequired, requireRole('manager'), (req, res) => {
             }
           }
 
-          // 检查余额是否足够
+          // 检查余额是否足够（优先使用可用加班单位计算）
           const remaining = compBal.entitled_days - compBal.used_days;
-          if (remaining < compDays) {
+          if (remaining < compDays && availableCompDays >= compDays) {
+            // 余额不足但可用加班单位足够，更新余额
+            db.prepare('UPDATE leave_balances SET entitled_days = ? WHERE id = ?').run(availableCompDays, compBal.id);
+            compBal.entitled_days = availableCompDays;
+          } else if (remaining < compDays) {
             throw new Error('调休余额不足');
           }
 
