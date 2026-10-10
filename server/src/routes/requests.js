@@ -73,7 +73,7 @@ router.post('/', authRequired, (req, res) => {
   const teamLeadId = team ? team.lead_user_id : null;
 
   // 判断是否需要部门经理审批（请假超过3天）
-  const needsDeptManager = type === 'leave' && Number(days) > 3;
+  const needsDeptManager = type === 'leave' && Number(days) >= 3;
 
   const info = db.prepare(
     `INSERT INTO attendance_requests
