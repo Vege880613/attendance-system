@@ -3,8 +3,8 @@
 
 -- 用户
 INSERT INTO users (id, username, password_hash, name, role, team_id, hire_date, status) VALUES
-(1, 'admin', '$2a$10$hash', '系统管理员', 'manager', NULL, '2020-01-01', 'active'),
-(22, 'gaolongfei', '$2a$10$hash', '高龙飞', 'employee', 2, '2016-10-01', 'active');
+(1, 'admin', '$2a$10$SLMkn10ORfEf8zGJ.VhcbeepXSN0W9dPvq1V/fOx6UAZAf8kPcD.i', '系统管理员', 'manager', NULL, '2020-01-01', 'active'),
+(22, 'gaolongfei', '$2a$10$zYpe3Kpur4zeUnJOTeqZKeRRN0yGnW5Prmdp3jy4aCEPKAu20x8OW', '高龙飞', 'employee', 2, '2016-10-01', 'active');
 
 -- 年假余额（应享10天，已用3天，剩余7天）
 INSERT INTO leave_balances (user_id, leave_type, year, entitled_days, used_days) VALUES
