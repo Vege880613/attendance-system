@@ -116,6 +116,7 @@ db.exec(`
     date TEXT NOT NULL UNIQUE,
     name TEXT NOT NULL,
     type TEXT NOT NULL CHECK(type IN ('holiday','workday')),
+    year INTEGER NOT NULL,
     created_at TEXT DEFAULT (datetime('now','localtime'))
   );
 `);
@@ -123,6 +124,14 @@ db.exec(`
 // 数据库迁移：添加缺失的列（仅在表已存在时运行）
 const migrations = () => {
   try {
+    // 检查 holidays 表是否有 year 列
+    const holidayCols = db.prepare("PRAGMA table_info(holidays)").all();
+    if (!holidayCols.some(col => col.name === 'year')) {
+      db.exec("ALTER TABLE holidays ADD COLUMN year INTEGER");
+      db.exec("UPDATE holidays SET year = substr(date, 1, 4) WHERE year IS NULL");
+      console.log('✅ 已添加 holidays.year 列');
+    }
+
     const columns = db.prepare("PRAGMA table_info(attendance_requests)").all();
     const columnNames = columns.map(col => col.name);
 
