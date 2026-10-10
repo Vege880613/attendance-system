@@ -72,7 +72,7 @@ router.post('/', authRequired, (req, res) => {
   const team = me && me.team_id ? db.prepare('SELECT lead_user_id FROM teams WHERE id = ?').get(me.team_id) : null;
   const teamLeadId = team ? team.lead_user_id : null;
 
-  // 判断是否需要部门经理审批（请假超过3天）
+  // 判断是否需要部门经理审批（请假3天及以上）
   const needsDeptManager = type === 'leave' && Number(days) >= 3;
 
   const info = db.prepare(
@@ -260,7 +260,7 @@ router.put('/:id/confirm', authRequired, requireRole('manager'), (req, res) => {
 
       if (request.leave_type_used === 'annual') {
         // 年假：扣减年假余额
-        const bal = db.prepare(`SELECT * FROM leave_balances WHERE user_type='annual' AND year=?`).get(request.user_id, year);
+        const bal = db.prepare(`SELECT * FROM leave_balances WHERE user_id=? AND leave_type='annual' AND year=?`).get(request.user_id, year);
         if (!bal || (bal.entitled_days - bal.used_days) < days) throw new Error('年假余额不足');
         db.prepare('UPDATE leave_balances SET used_days = used_days + ? WHERE id = ?').run(days, bal.id);
         // 更新原申请状态为已录入（不创建新记录）
