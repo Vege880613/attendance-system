@@ -107,6 +107,7 @@ router.get('/summary', authRequired, requireRole('manager', 'team_lead'), (req, 
         const leaveTypeMap = {
           annual: '年假',
           compensatory: '调休',
+          mixed: '混合抵扣（年假+调休）',
           business_trip: '公差',
           other: '其他'
         };
