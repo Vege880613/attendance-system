@@ -9,38 +9,7 @@ const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
-// 数据库迁移：添加缺失的列
-const migrations = () => {
-  // 检查 attendance_requests 表是否有 needs_dept_manager 列
-  const columns = db.prepare("PRAGMA table_info(attendance_requests)").all();
-  const hasColumn = columns.some(col => col.name === 'needs_dept_manager');
-  if (!hasColumn) {
-    db.exec("ALTER TABLE attendance_requests ADD COLUMN needs_dept_manager INTEGER DEFAULT 0");
-    console.log('✅ 已添加 needs_dept_manager 列');
-  }
-
-  // 检查是否有 annual_days 列
-  const hasAnnualDays = columns.some(col => col.name === 'annual_days');
-  if (!hasAnnualDays) {
-    db.exec("ALTER TABLE attendance_requests ADD COLUMN annual_days REAL DEFAULT 0");
-    console.log('✅ 已添加 annual_days 列');
-  }
-
-  // 检查是否有 dept_manager_id 列
-  const hasDeptManager = columns.some(col => col.name === 'dept_manager_id');
-  if (!hasDeptManager) {
-    db.exec("ALTER TABLE attendance_requests ADD COLUMN dept_manager_id INTEGER DEFAULT NULL");
-    db.exec("ALTER TABLE attendance_requests ADD COLUMN dept_manager_comment TEXT");
-    db.exec("ALTER TABLE attendance_requests ADD COLUMN dept_manager_time TEXT");
-    console.log('✅ 已添加 dept_manager 列');
-  }
-
-  // 检查 leave_type_used 是否包含 mixed
-  // 注意：SQLite 不支持修改 CHECK 约束，需要重建表
-};
-
-migrations();
-
+// 先创建所有表
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -91,7 +60,7 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS leave_balances (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
-    leave_type TEXT NOT NULL CHECK(leave_type IN ('annual','compensatory','business_trip','other')),
+    leave_type TEXT NOT NULL CHECK(leave_type IN ('annual','compensatory','mixed','business_trip','other')),
     year INTEGER NOT NULL,
     entitled_days REAL NOT NULL DEFAULT 0,
     used_days REAL NOT NULL DEFAULT 0,
@@ -133,7 +102,6 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now','localtime'))
   );
 
-  -- 项目/系统维护表
   CREATE TABLE IF NOT EXISTS projects (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -143,64 +111,61 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now','localtime'))
   );
 
-  -- 中国节假日表
   CREATE TABLE IF NOT EXISTS holidays (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     date TEXT NOT NULL UNIQUE,
     name TEXT NOT NULL,
     type TEXT NOT NULL CHECK(type IN ('holiday','workday')),
-    year INTEGER NOT NULL
+    created_at TEXT DEFAULT (datetime('now','localtime'))
   );
 `);
 
-// 插入 2026 年中国节假日
-const holidays2026 = [
-  { date: '2026-01-01', name: '元旦', type: 'holiday' },
-  { date: '2026-02-16', name: '春节', type: 'holiday' },
-  { date: '2026-02-17', name: '春节', type: 'holiday' },
-  { date: '2026-02-18', name: '春节', type: 'holiday' },
-  { date: '2026-02-19', name: '春节', type: 'holiday' },
-  { date: '2026-02-20', name: '春节', type: 'holiday' },
-  { date: '2026-02-21', name: '春节', type: 'holiday' },
-  { date: '2026-02-22', name: '春节', type: 'holiday' },
-  { date: '2026-02-14', name: '春节调休', type: 'workday' },
-  { date: '2026-02-28', name: '春节调休', type: 'workday' },
-  { date: '2026-04-04', name: '清明节', type: 'holiday' },
-  { date: '2026-04-05', name: '清明节', type: 'holiday' },
-  { date: '2026-04-06', name: '清明节', type: 'holiday' },
-  { date: '2026-05-01', name: '劳动节', type: 'holiday' },
-  { date: '2026-05-02', name: '劳动节', type: 'holiday' },
-  { date: '2026-05-03', name: '劳动节', type: 'holiday' },
-  { date: '2026-05-04', name: '劳动节', type: 'holiday' },
-  { date: '2026-05-05', name: '劳动节', type: 'holiday' },
-  { date: '2026-04-26', name: '劳动节调休', type: 'workday' },
-  { date: '2026-06-19', name: '端午节', type: 'holiday' },
-  { date: '2026-06-20', name: '端午节', type: 'holiday' },
-  { date: '2026-06-21', name: '端午节', type: 'holiday' },
-  { date: '2026-09-25', name: '中秋节', type: 'holiday' },
-  { date: '2026-09-26', name: '中秋节', type: 'holiday' },
-  { date: '2026-09-27', name: '中秋节', type: 'holiday' },
-  { date: '2026-09-20', name: '中秋调休', type: 'workday' },
-  { date: '2026-10-01', name: '国庆节', type: 'holiday' },
-  { date: '2026-10-02', name: '国庆节', type: 'holiday' },
-  { date: '2026-10-03', name: '国庆节', type: 'holiday' },
-  { date: '2026-10-04', name: '国庆节', type: 'holiday' },
-  { date: '2026-10-05', name: '国庆节', type: 'holiday' },
-  { date: '2026-10-06', name: '国庆节', type: 'holiday' },
-  { date: '2026-10-07', name: '国庆节', type: 'holiday' },
-  { date: '2026-10-10', name: '国庆调休', type: 'workday' },
-];
+// 数据库迁移：添加缺失的列（仅在表已存在时运行）
+const migrations = () => {
+  try {
+    const columns = db.prepare("PRAGMA table_info(attendance_requests)").all();
+    const columnNames = columns.map(col => col.name);
 
-const insertHoliday = db.prepare('INSERT OR IGNORE INTO holidays (date, name, type, year) VALUES (?, ?, ?, 2026)');
-holidays2026.forEach(h => insertHoliday.run(h.date, h.name, h.type));
+    if (!columnNames.includes('needs_dept_manager')) {
+      db.exec("ALTER TABLE attendance_requests ADD COLUMN needs_dept_manager INTEGER DEFAULT 0");
+      console.log('✅ 已添加 needs_dept_manager 列');
+    }
 
-// 安全添加列（如果已存在则忽略错误）
-try {
-  db.exec('ALTER TABLE attendance_requests ADD COLUMN project_id INTEGER DEFAULT NULL');
-} catch (e) {
-  // 列已存在时忽略
-}
+    if (!columnNames.includes('annual_days')) {
+      db.exec("ALTER TABLE attendance_requests ADD COLUMN annual_days REAL DEFAULT 0");
+      console.log('✅ 已添加 annual_days 列');
+    }
 
-console.log('✅ SQLite 数据库初始化完成:', dbPath);
+    if (!columnNames.includes('dept_manager_id')) {
+      db.exec("ALTER TABLE attendance_requests ADD COLUMN dept_manager_id INTEGER DEFAULT NULL");
+      db.exec("ALTER TABLE attendance_requests ADD COLUMN dept_manager_comment TEXT");
+      db.exec("ALTER TABLE attendance_requests ADD COLUMN dept_manager_time TEXT");
+      console.log('✅ 已添加 dept_manager 列');
+    }
+
+    if (!columnNames.includes('pending_dept')) {
+      // SQLite 不支持修改 CHECK 约束，需要忽略
+      console.log('⚠️ 无法修改 CHECK 约束（pending_dept）');
+    }
+  } catch (e) {
+    console.log('迁移跳过:', e.message);
+  }
+};
+
+migrations();
+
+// 确保 admin 用户存在
+const bcrypt = require('bcryptjs');
+const ensureAdmin = () => {
+  const admin = db.prepare('SELECT * FROM users WHERE username = ?').get('admin');
+  if (!admin) {
+    const hash = bcrypt.hashSync('admin123', 10);
+    db.prepare(
+      "INSERT INTO users (username, password_hash, name, role, hire_date, status) VALUES ('admin', ?, '系统管理员', 'manager', '2020-01-01', 'active')"
+    ).run(hash);
+    console.log('✅ 已创建默认管理员账号 (admin/admin123)');
+  }
+};
+ensureAdmin();
 
 module.exports = db;
