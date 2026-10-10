@@ -147,6 +147,11 @@ const migrations = () => {
       // SQLite 不支持修改 CHECK 约束，需要忽略
       console.log('⚠️ 无法修改 CHECK 约束（pending_dept）');
     }
+
+    if (!columnNames.includes('project_id')) {
+      db.exec("ALTER TABLE attendance_requests ADD COLUMN project_id INTEGER DEFAULT NULL");
+      console.log('✅ 已添加 project_id 列');
+    }
   } catch (e) {
     console.log('迁移跳过:', e.message);
   }
