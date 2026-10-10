@@ -9,6 +9,38 @@ const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
+// 数据库迁移：添加缺失的列
+const migrations = () => {
+  // 检查 attendance_requests 表是否有 needs_dept_manager 列
+  const columns = db.prepare("PRAGMA table_info(attendance_requests)").all();
+  const hasColumn = columns.some(col => col.name === 'needs_dept_manager');
+  if (!hasColumn) {
+    db.exec("ALTER TABLE attendance_requests ADD COLUMN needs_dept_manager INTEGER DEFAULT 0");
+    console.log('✅ 已添加 needs_dept_manager 列');
+  }
+
+  // 检查是否有 annual_days 列
+  const hasAnnualDays = columns.some(col => col.name === 'annual_days');
+  if (!hasAnnualDays) {
+    db.exec("ALTER TABLE attendance_requests ADD COLUMN annual_days REAL DEFAULT 0");
+    console.log('✅ 已添加 annual_days 列');
+  }
+
+  // 检查是否有 dept_manager_id 列
+  const hasDeptManager = columns.some(col => col.name === 'dept_manager_id');
+  if (!hasDeptManager) {
+    db.exec("ALTER TABLE attendance_requests ADD COLUMN dept_manager_id INTEGER DEFAULT NULL");
+    db.exec("ALTER TABLE attendance_requests ADD COLUMN dept_manager_comment TEXT");
+    db.exec("ALTER TABLE attendance_requests ADD COLUMN dept_manager_time TEXT");
+    console.log('✅ 已添加 dept_manager 列');
+  }
+
+  // 检查 leave_type_used 是否包含 mixed
+  // 注意：SQLite 不支持修改 CHECK 约束，需要重建表
+};
+
+migrations();
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -76,16 +108,21 @@ db.exec(`
     end_date TEXT NOT NULL,
     days REAL DEFAULT 0,
     overtime_units_used INTEGER DEFAULT 0,
-    leave_type_used TEXT DEFAULT 'none' CHECK(leave_type_used IN ('annual','compensatory','business_trip','other','none')),
+    leave_type_used TEXT DEFAULT 'none' CHECK(leave_type_used IN ('annual','compensatory','mixed','business_trip','other','none')),
     reason TEXT,
-    status TEXT DEFAULT 'pending' CHECK(status IN ('pending','approved','rejected','entered')),
+    status TEXT DEFAULT 'pending' CHECK(status IN ('pending','approved','rejected','entered','pending_dept')),
     team_lead_id INTEGER DEFAULT NULL,
     team_lead_comment TEXT,
     team_lead_time TEXT,
+    dept_manager_id INTEGER DEFAULT NULL,
+    dept_manager_comment TEXT,
+    dept_manager_time TEXT,
     manager_id INTEGER DEFAULT NULL,
     manager_comment TEXT,
     manager_time TEXT,
-    created_at TEXT DEFAULT (datetime('now','localtime'))
+    needs_dept_manager INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now','localtime')),
+    annual_days REAL DEFAULT 0
   );
 
   CREATE TABLE IF NOT EXISTS audit_logs (
