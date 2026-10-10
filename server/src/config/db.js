@@ -147,6 +147,11 @@ const migrations = () => {
       // SQLite 不支持修改 CHECK 约束，需要忽略
       console.log('⚠️ 无法修改 CHECK 约束（pending_dept）');
     }
+
+    if (!columnNames.includes('project_id')) {
+      db.exec("ALTER TABLE attendance_requests ADD COLUMN project_id INTEGER DEFAULT NULL");
+      console.log('✅ 已添加 project_id 列');
+    }
   } catch (e) {
     console.log('迁移跳过:', e.message);
   }
@@ -167,5 +172,116 @@ const ensureAdmin = () => {
   }
 };
 ensureAdmin();
+
+// 确保节假日数据存在
+const ensureHolidays = () => {
+  const count = db.prepare('SELECT COUNT(*) as cnt FROM holidays').get().cnt;
+  if (count === 0) {
+    const holidays = [
+      ['2026-01-01', '元旦', 'holiday'],
+      ['2026-02-16', '春节', 'holiday'],
+      ['2026-02-17', '春节', 'holiday'],
+      ['2026-02-18', '春节', 'holiday'],
+      ['2026-02-19', '春节', 'holiday'],
+      ['2026-02-20', '春节', 'holiday'],
+      ['2026-02-21', '春节', 'holiday'],
+      ['2026-02-22', '春节', 'holiday'],
+      ['2026-02-14', '春节调休', 'workday'],
+      ['2026-02-28', '春节调休', 'workday'],
+      ['2026-04-04', '清明节', 'holiday'],
+      ['2026-04-05', '清明节', 'holiday'],
+      ['2026-04-06', '清明节', 'holiday'],
+      ['2026-05-01', '劳动节', 'holiday'],
+      ['2026-05-02', '劳动节', 'holiday'],
+      ['2026-05-03', '劳动节', 'holiday'],
+      ['2026-05-04', '劳动节', 'holiday'],
+      ['2026-05-05', '劳动节', 'holiday'],
+      ['2026-04-26', '劳动节调休', 'workday'],
+      ['2026-06-19', '端午节', 'holiday'],
+      ['2026-06-20', '端午节', 'holiday'],
+      ['2026-06-21', '端午节', 'holiday'],
+      ['2026-09-25', '中秋节', 'holiday'],
+      ['2026-09-26', '中秋节', 'holiday'],
+      ['2026-09-27', '中秋节', 'holiday'],
+      ['2026-09-20', '中秋调休', 'workday'],
+      ['2026-10-01', '国庆节', 'holiday'],
+      ['2026-10-02', '国庆节', 'holiday'],
+      ['2026-10-03', '国庆节', 'holiday'],
+      ['2026-10-04', '国庆节', 'holiday'],
+      ['2026-10-05', '国庆节', 'holiday'],
+      ['2026-10-06', '国庆节', 'holiday'],
+      ['2026-10-07', '国庆节', 'holiday'],
+      ['2026-10-10', '国庆调休', 'workday'],
+      ['2026-12-31', '元旦前夕', 'holiday'],
+    ];
+    const insert = db.prepare('INSERT INTO holidays (date, name, type, year) VALUES (?, ?, ?, ?)');
+    holidays.forEach(h => insert.run(h[0], h[1], h[2], h[0].slice(0, 4)));
+    console.log(`✅ 已创建 ${holidays.length} 条节假日数据`);
+  }
+};
+ensureHolidays();
+
+// 确保项目数据存在
+const ensureProjects = () => {
+  const count = db.prepare('SELECT COUNT(*) as cnt FROM projects').get().cnt;
+  if (count === 0) {
+    const projects = [
+      ['生产线A设备升级', 'project', '2026年度产线自动化改造项目'],
+      ['ERP系统维护', 'system_maintenance', '月度ERP系统维护与优化'],
+      ['仓储管理系统开发', 'project', 'WMS仓储管理系统二期开发'],
+      ['数据库迁移', 'system_maintenance', '数据库服务器迁移维护'],
+      ['质量检测平台', 'project', '质量检测数据平台建设'],
+      ['SES二开项目', 'project', ''],
+    ];
+    const insert = db.prepare('INSERT INTO projects (name, type, description) VALUES (?, ?, ?)');
+    projects.forEach(p => insert.run(p[0], p[1], p[2]));
+    console.log(`✅ 已创建 ${projects.length} 个项目数据`);
+  }
+};
+ensureProjects();
+
+// 确保班组数据存在
+const ensureTeams = () => {
+  const count = db.prepare('SELECT COUNT(*) as cnt FROM teams').get().cnt;
+  if (count === 0) {
+    const teams = [
+      ['生产车间A', 12],
+      ['生产车间B', 21],
+      ['质检部', 13],
+    ];
+    const insert = db.prepare('INSERT INTO teams (name, lead_user_id) VALUES (?, ?)');
+    teams.forEach(t => insert.run(t[0], t[1]));
+    console.log(`✅ 已创建 ${teams.length} 个班组数据`);
+  }
+};
+ensureTeams();
+
+// 确保用户数据存在
+const ensureUsers = () => {
+  const count = db.prepare('SELECT COUNT(*) as cnt FROM users').get().cnt;
+  if (count <= 1) {
+    const hash = bcrypt.hashSync('123456', 10);
+    const users = [
+      ['lisi', '李四', 'employee', 1, '2015-03-01'],
+      ['wangwu', '王五', 'team_lead', 1, '2012-07-15'],
+      ['zhaoliu', '赵六', 'team_lead', 3, '2018-01-10'],
+      ['zhangsan', '张三', 'employee', 1, '2020-06-01'],
+      ['zhangsi', '张四', 'employee', 1, '2022-02-15'],
+      ['sunqi', '孙七', 'employee', 2, '2019-08-20'],
+      ['sunba', '孙八', 'employee', 2, '2023-01-05'],
+      ['zhoujiu', '周九', 'employee', 3, '2021-04-12'],
+      ['wushi', '吴十', 'employee', 3, '2017-11-30'],
+      ['bumen', '部门经理', 'dept_manager', null, '2016-05-01'],
+      ['niezhikun', '聂志坤', 'team_lead', 2, '2014-09-01'],
+      ['gaolongfei', '高龙飞', 'employee', 2, '2016-10-01'],
+      ['mayutao', '马宇涛', 'manager', null, '2010-01-01'],
+      ['shenkuo', '沈阔', 'dept_manager', null, '2013-06-01'],
+    ];
+    const insert = db.prepare('INSERT OR IGNORE INTO users (username, password_hash, name, role, team_id, hire_date, status) VALUES (?, ?, ?, ?, ?, ?, \'active\')');
+    users.forEach(u => insert.run(u[0], hash, u[1], u[2], u[3], u[4]));
+    console.log(`✅ 已创建 ${users.length} 个用户数据`);
+  }
+};
+ensureUsers();
 
 module.exports = db;
