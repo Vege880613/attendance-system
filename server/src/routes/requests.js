@@ -72,8 +72,8 @@ router.post('/', authRequired, (req, res) => {
   const team = me && me.team_id ? db.prepare('SELECT lead_user_id FROM teams WHERE id = ?').get(me.team_id) : null;
   const teamLeadId = team ? team.lead_user_id : null;
 
-  // 判断是否需要部门经理审批（请假超过3天）
-  const needsDeptManager = type === 'leave' && Number(days) > 3;
+  // 判断是否需要部门经理审批（请假3天及以上）
+  const needsDeptManager = type === 'leave' && Number(days) >= 3;
 
   const info = db.prepare(
     `INSERT INTO attendance_requests
