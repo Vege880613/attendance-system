@@ -170,7 +170,8 @@ async function onSave() {
     name: editing.name,
     role: editing.role,
     team_id: editing.team_id,
-    hire_date: dayjs(editing.hire_date).format('YYYY-MM-DD')
+    hire_date: dayjs(editing.hire_date).format('YYYY-MM-DD'),
+    employee_id: editing.employee_id || null
   }
   if (editing.id) {
     await userApi.update(editing.id, payload)

@@ -19,6 +19,12 @@
 
         <a-table :columns="columns" :data-source="list" row-key="id" :pagination="{ pageSize: 20 }" size="small">
           <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'user_name'">
+              {{ record.user_name || '-' }}
+            </template>
+            <template v-if="column.key === 'employee_id'">
+              {{ record.employee_id || '-' }}
+            </template>
             <template v-if="column.key === 'status'">
               <a-tag :color="statusColor(record.status)">{{ statusLabel(record.status) }}</a-tag>
             </template>

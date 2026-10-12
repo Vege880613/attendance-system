@@ -32,7 +32,7 @@ router.get('/:userId', authRequired, (req, res) => {
   if (overtimeDays > 0 || usedDays > 0) {
     if (compIndex >= 0) {
       // 更新现有记录
-      db.prepare('UPDATE leave_balances SET entitled_days = ?, used_days = ?, updated_at=datetime("now","localtime"), updated_by=? WHERE id = ?').run(overtimeDays, usedDays, req.user.id, list[compIndex].id);
+      db.prepare('UPDATE leave_balances SET entitled_days = ?, used_days = ?, updated_at=datetime(\'now\',\'localtime\'), updated_by=? WHERE id = ?').run(overtimeDays, usedDays, req.user.id, list[compIndex].id);
       list[compIndex].entitled_days = overtimeDays;
       list[compIndex].used_days = usedDays;
     } else {
@@ -103,7 +103,14 @@ router.get('/export', authRequired, requireRole('manager'), (req, res) => {
   res.send('﻿' + csv);
 });
 
-  // 动态计算调休余额（基于全部加班单位，不仅仅是可用的）
+router.get('/:userId', authRequired, (req, res) => {
+  const userId = req.params.userId;
+  if (req.user.role === 'employee' && Number(userId) !== req.user.id) {
+    return res.status(403).json({ message: '无权查看' });
+  }
+  const year = new Date().getFullYear();
+
+  // 动态计算调休余额（基于可用加班单位）
   const allOvertime = db.prepare(
     `SELECT COUNT(*) as cnt FROM overtime_units WHERE user_id = ? AND strftime('%Y', work_date) = ?`
   ).get(userId, String(year));
