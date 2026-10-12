@@ -77,9 +77,9 @@ router.post('/', authRequired, (req, res) => {
 
   const info = db.prepare(
     `INSERT INTO attendance_requests
-      (user_id, type, subtype, start_date, end_date, days, overtime_units_used, leave_type_used, reason, team_lead_id, project_id, needs_dept_manager)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`
-  ).run(req.user.id, type, subtype || null, start_date, end_date, days || 0, overtime_units_used || 0, leave_type_used || 'none', reason || null, teamLeadId, project_id || null, needsDeptManager ? 1 : 0);
+      (user_id, type, subtype, start_date, end_date, days, overtime_units_used, leave_type_used, reason, team_lead_id, project_id, needs_dept_manager, annual_days)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`
+  ).run(req.user.id, type, subtype || null, start_date, end_date, days || 0, overtime_units_used || 0, leave_type_used || 'none', reason || null, teamLeadId, project_id || null, needsDeptManager ? 1 : 0, annualDays || 0);
 
   db.prepare('INSERT INTO audit_logs (user_id, action, detail) VALUES (?,?,?)').run(
     req.user.id, 'create_request', `发起 ${type} 申请 ID=${info.lastInsertRowid}`
