@@ -64,7 +64,7 @@ router.get('/overtime-detail/:userId', authRequired, (req, res) => {
   let sql = `
     SELECT o.id, o.work_date, o.hours, o.units_count, o.status,
            o.leave_request_id, o.leave_type_mark, o.leave_dates,
-           u.name AS user_name, r.reason, r.team_lead_comment, r.start_date AS leave_start, r.end_date AS leave_end, p.name AS project_name
+           u.name AS user_name, u.employee_id, r.reason, r.team_lead_comment, r.start_date AS leave_start, r.end_date AS leave_end, p.name AS project_name
     FROM overtime_units o
     JOIN users u ON o.user_id = u.id
     LEFT JOIN attendance_requests r ON o.request_id = r.id
