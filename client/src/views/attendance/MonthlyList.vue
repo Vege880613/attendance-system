@@ -23,6 +23,7 @@
         <template v-if="column.key === 'employee_id'">
           {{ record.employee_id || (selectedUser ? employees.find(e => e.id === selectedUser)?.employee_id : '-') }}
         </template>
+        <template v-if="column.key === 'work_date'">
           <span :style="{ color: record.type === 'holiday' ? '#cf1322' : 'inherit' }">
             {{ record.work_date }}
             <span v-if="record.holiday_name" style="color:#cf1322;font-size:12px;">
