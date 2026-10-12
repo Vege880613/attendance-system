@@ -153,6 +153,7 @@ function showEdit(record) {
     id: record.id,
     username: record.username,
     name: record.name,
+    employee_id: record.employee_id || '',
     role: record.role,
     team_id: record.team_id,
     hire_date: dayjs(record.hire_date),
