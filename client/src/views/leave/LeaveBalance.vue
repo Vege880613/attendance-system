@@ -4,6 +4,7 @@
       <a-select v-model:value="selectedUser" placeholder="选择员工" style="width:160px;" @change="fetchBalance">
         <a-select-option v-for="u in employees" :key="u.id" :value="u.id">{{ u.name }}</a-select-option>
       </a-select>
+      <a-button @click="exportData">📥 导出</a-button>
     </a-space>
 
     <a-card :title="`${year} 年度假期余额`">
@@ -148,6 +149,31 @@ async function fetchEmployees() {
   if (!authStore.isManager) return
   const res = await userApi.list({ status: 'active' })
   employees.value = res.list
+}
+
+// 导出功能
+function exportData() {
+  const headers = ['leave_type', 'entitled_days', 'used_days']
+  const headerLabels = ['假期类型', '总额度', '已使用']
+
+  const csvRows = [headerLabels.join(',')]
+  balances.value.forEach(row => {
+    const values = headers.map(h => {
+      let val = row[h]
+      if (h === 'leave_type') val = typeName(row)
+      if (val === null || val === undefined) val = ''
+      val = String(val).replace(/"/g, '""')
+      return `"${val}"`
+    })
+    csvRows.push(values.join(','))
+  })
+
+  const csvContent = '﻿' + csvRows.join('\n')
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+  const link = document.createElement('a')
+  link.href = URL.createObjectURL(blob)
+  link.download = `假期余额_${new Date().toISOString().slice(0, 10)}.csv`
+  link.click()
 }
 
 async function showDetail(item) {

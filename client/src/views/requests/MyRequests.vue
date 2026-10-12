@@ -1,5 +1,8 @@
 <template>
   <div>
+    <a-space style="margin-bottom:16px;">
+      <a-button @click="exportData">📥 导出</a-button>
+    </a-space>
     <a-table :columns="columns" :data-source="list" row-key="id" :pagination="{ pageSize: 20 }" size="small">
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'type'">
@@ -38,6 +41,37 @@ const typeLabel = (t) => ({ overtime: '加班', leave: '休假', special_leave: 
 const leaveTypeLabel = (t) => ({ annual: '年假', compensatory: '调休', business_trip: '公差', other: '其他', mixed: '混合抵扣（年假+调休）', none: '-' }[t] || '-')
 const statusLabel = (s) => ({ pending: '待审核', approved: '已审核', rejected: '已驳回', entered: '已录入' }[s])
 const statusColor = (s) => ({ pending: 'orange', approved: 'blue', rejected: 'red', entered: 'green' }[s])
+
+// 导出功能
+function exportData() {
+  const headers = ['type', 'leave_type_used', 'start_date', 'end_date', 'days', 'status', 'team_lead_comment', 'manager_comment', 'created_at', 'updated_at']
+  const headerLabels = ['申请类型', '假期类型', '开始日期', '结束日期', '天数/工时', '状态', '班组长意见', '管理员意见', '创建时间', '更新时间']
+
+  const typeLabel = (t) => ({ overtime: '加班', leave: '休假', special_leave: '婚丧嫁娶' }[t])
+  const leaveTypeLabel = (t) => ({ annual: '年假', compensatory: '调休', business_trip: '公差', other: '其他', mixed: '混合', none: '-' }[t] || '-')
+  const statusLabel = (s) => ({ pending: '待审核', approved: '已审核', rejected: '已驳回', entered: '已录入' }[s])
+
+  const csvRows = [headerLabels.join(',')]
+  list.value.forEach(row => {
+    const values = headers.map(h => {
+      let val = row[h]
+      if (h === 'type') val = typeLabel(val)
+      else if (h === 'leave_type_used') val = leaveTypeLabel(val)
+      else if (h === 'status') val = statusLabel(val)
+      if (val === null || val === undefined) val = ''
+      val = String(val).replace(/"/g, '""')
+      return `"${val}"`
+    })
+    csvRows.push(values.join(','))
+  })
+
+  const csvContent = '﻿' + csvRows.join('\n')
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+  const link = document.createElement('a')
+  link.href = URL.createObjectURL(blob)
+  link.download = `我的申请_${new Date().toISOString().slice(0, 10)}.csv`
+  link.click()
+}
 
 onMounted(async () => {
   const res = await requestApi.mine()

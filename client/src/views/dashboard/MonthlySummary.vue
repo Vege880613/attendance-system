@@ -6,6 +6,7 @@
         <a-select-option v-for="u in employees" :key="u.id" :value="u.id">{{ u.name }}</a-select-option>
       </a-select>
       <a-button type="primary" @click="fetchSummary" :loading="loading">查询</a-button>
+      <a-button @click="exportData">📥 导出</a-button>
     </a-space>
 
     <!-- 汇总统计卡片 -->
@@ -177,6 +178,30 @@ async function fetchSummary() {
   } finally {
     loading.value = false
   }
+}
+
+// 导出功能
+function exportData() {
+  const headers = ['userName', 'employeeId', 'teamName', 'workDays', 'normalDays', 'shortageDays', 'leaveDays', 'absentDays', 'overtimeUnits', 'annualLeaveRemaining', 'compLeaveRemaining']
+  const headerLabels = ['姓名', '工号', '班组', '工作日', '正常', '缺卡', '请假', '旷工', '加班单位', '年假剩余', '调休剩余']
+
+  const csvRows = [headerLabels.join(',')]
+  list.value.forEach(row => {
+    const values = headers.map(h => {
+      let val = row[h]
+      if (val === null || val === undefined) val = ''
+      val = String(val).replace(/"/g, '""')
+      return `"${val}"`
+    })
+    csvRows.push(values.join(','))
+  })
+
+  const csvContent = '﻿' + csvRows.join('\n')
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+  const link = document.createElement('a')
+  link.href = URL.createObjectURL(blob)
+  link.download = `月度汇总_${yearMonth.value?.format('YYYY-MM') || ''}_${new Date().toISOString().slice(0, 10)}.csv`
+  link.click()
 }
 
 async function fetchEmployees() {

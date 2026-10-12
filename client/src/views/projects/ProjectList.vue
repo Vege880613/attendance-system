@@ -11,6 +11,7 @@
         <a-select-option value="paused">暂停</a-select-option>
       </a-select>
       <a-button type="primary" @click="showCreate" v-if="authStore.isManager">新增项目</a-button>
+      <a-button @click="exportData">📥 导出</a-button>
     </a-space>
 
     <a-table :columns="columns" :data-source="list" row-key="id" :pagination="{ pageSize: 20 }" size="small">
@@ -86,6 +87,32 @@ async function fetchList() {
   if (statusFilter.value) params.status = statusFilter.value
   const res = await projectApi.list(params)
   list.value = res.list
+}
+
+// 导出功能
+function exportData() {
+  const headers = ['name', 'type', 'description', 'status', 'created_at', 'updated_at']
+  const headerLabels = ['项目名称', '类型', '描述', '状态', '创建时间', '更新时间']
+
+  const csvRows = [headerLabels.join(',')]
+  list.value.forEach(row => {
+    const values = headers.map(h => {
+      let val = row[h]
+      if (h === 'type') val = val === 'project' ? '项目' : '系统维护'
+      else if (h === 'status') val = { active: '进行中', completed: '已完成', paused: '暂停' }[val] || val
+      if (val === null || val === undefined) val = ''
+      val = String(val).replace(/"/g, '""')
+      return `"${val}"`
+    })
+    csvRows.push(values.join(','))
+  })
+
+  const csvContent = '﻿' + csvRows.join('\n')
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+  const link = document.createElement('a')
+  link.href = URL.createObjectURL(blob)
+  link.download = `项目列表_${new Date().toISOString().slice(0, 10)}.csv`
+  link.click()
 }
 
 function showCreate() {

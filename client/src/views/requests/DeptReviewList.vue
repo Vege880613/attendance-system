@@ -1,5 +1,8 @@
 <template>
   <div>
+    <a-space style="margin-bottom:16px;">
+      <a-button @click="exportData">📥 导出</a-button>
+    </a-space>
     <a-alert message="审批超过3天的请假申请" type="info" show-icon style="margin-bottom:16px;" />
     <a-table :columns="columns" :data-source="list" row-key="id" :pagination="{ pageSize: 20 }" size="small">
       <template #bodyCell="{ column, record }">
@@ -79,6 +82,30 @@ async function onSubmit() {
 async function fetchList() {
   const res = await requestApi.deptReview()
   list.value = res.list
+}
+
+// 导出功能
+function exportData() {
+  const headers = ['user_name', 'leave_type_used', 'start_date', 'end_date', 'days', 'team_lead_comment', 'created_at', 'updated_at']
+  const headerLabels = ['申请人', '假期类型', '开始日期', '结束日期', '天数', '班组长意见', '创建时间', '更新时间']
+
+  const csvRows = [headerLabels.join(',')]
+  list.value.forEach(row => {
+    const values = headers.map(h => {
+      let val = row[h]
+      if (val === null || val === undefined) val = ''
+      val = String(val).replace(/"/g, '""')
+      return `"${val}"`
+    })
+    csvRows.push(values.join(','))
+  })
+
+  const csvContent = '﻿' + csvRows.join('\n')
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+  const link = document.createElement('a')
+  link.href = URL.createObjectURL(blob)
+  link.download = `部门经理审批列表_${new Date().toISOString().slice(0, 10)}.csv`
+  link.click()
 }
 
 onMounted(fetchList)

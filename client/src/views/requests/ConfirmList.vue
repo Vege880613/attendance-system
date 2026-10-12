@@ -1,5 +1,8 @@
 <template>
   <div>
+    <a-space style="margin-bottom:16px;">
+      <a-button @click="exportData">📥 导出</a-button>
+    </a-space>
     <a-alert message="管理人员确认录入后，系统将自动执行数据变更（生成加班单位、扣减假期余额等）" type="info" show-icon style="margin-bottom:16px;" />
 
     <a-table :columns="columns" :data-source="list" row-key="id" :pagination="{ pageSize: 20 }" size="small">
@@ -95,6 +98,30 @@ async function onSubmit() {
 async function fetchList() {
   const res = await requestApi.confirm()
   list.value = res.list
+}
+
+// 导出功能
+function exportData() {
+  const headers = ['user_name', 'type', 'leave_type_used', 'start_date', 'end_date', 'days', 'status', 'team_lead_comment', 'manager_comment', 'created_at', 'updated_at']
+  const headerLabels = ['申请人', '类型', '假期类型', '开始日期', '结束日期', '天数/工时', '状态', '班组长意见', '管理员意见', '创建时间', '更新时间']
+
+  const csvRows = [headerLabels.join(',')]
+  list.value.forEach(row => {
+    const values = headers.map(h => {
+      let val = row[h]
+      if (val === null || val === undefined) val = ''
+      val = String(val).replace(/"/g, '""')
+      return `"${val}"`
+    })
+    csvRows.push(values.join(','))
+  })
+
+  const csvContent = '﻿' + csvRows.join('\n')
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+  const link = document.createElement('a')
+  link.href = URL.createObjectURL(blob)
+  link.download = `待确认录入列表_${new Date().toISOString().slice(0, 10)}.csv`
+  link.click()
 }
 
 onMounted(fetchList)
