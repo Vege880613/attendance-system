@@ -9,7 +9,7 @@ const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
-// 先创建所有表
+// 创建所有表
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -120,16 +120,5 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now','localtime'))
   );
 `);
-
-// 导入种子数据（如果数据库为空）
-const seedPath = path.join(__dirname, '..', '..', 'data', 'seed.sql');
-if (fs.existsSync(seedPath)) {
-  const userCount = db.prepare('SELECT COUNT(*) as cnt FROM users').get().cnt;
-  if (userCount === 0) {
-    const seedSQL = fs.readFileSync(seedPath, 'utf8');
-    db.exec(seedSQL);
-    console.log('✅ 已导入种子数据');
-  }
-}
 
 module.exports = db;
