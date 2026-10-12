@@ -2,10 +2,17 @@
   <div>
     <a-space style="margin-bottom:16px;">
       <a-button type="primary" @click="showCreate">新增班组</a-button>
+      <a-button @click="exportData">📥 导出</a-button>
     </a-space>
 
     <a-table :columns="columns" :data-source="list" row-key="id" :pagination="false" size="small">
       <template #bodyCell="{ column, record }">
+        <template v-if="column.key === 'created_at'">
+          <span style="font-size:12px;color:#999;">{{ record.created_at || '-' }}</span>
+        </template>
+        <template v-if="column.key === 'updated_at'">
+          <span style="font-size:12px;color:#999;">{{ record.updated_at || '-' }}</span>
+        </template>
         <template v-if="column.key === 'action'">
           <a-space>
             <a-button type="link" size="small" @click="showEdit(record)">编辑</a-button>
@@ -51,8 +58,34 @@ const columns = [
   { title: '班组名称', dataIndex: 'name', key: 'name', width: 160 },
   { title: '班组长', dataIndex: 'lead_name', key: 'lead_name', width: 120 },
   { title: '成员数', dataIndex: 'member_count', key: 'member_count', width: 80 },
+  { title: '创建时间', dataIndex: 'created_at', key: 'created_at', width: 120 },
+  { title: '更新时间', dataIndex: 'updated_at', key: 'updated_at', width: 120 },
   { title: '操作', key: 'action', width: 160 }
 ]
+
+// 导出功能
+function exportData() {
+  const headers = ['name', 'lead_name', 'member_count', 'created_at', 'updated_at'];
+  const headerLabels = ['班组名称', '班组长', '成员数', '创建时间', '更新时间'];
+
+  const csvRows = [headerLabels.join(',')];
+  list.value.forEach(row => {
+    const values = headers.map(h => {
+      let val = row[h];
+      if (val === null || val === undefined) val = '';
+      val = String(val).replace(/"/g, '""');
+      return `"${val}"`;
+    });
+    csvRows.push(values.join(','));
+  });
+
+  const csvContent = '﻿' + csvRows.join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `班组列表_${new Date().toISOString().slice(0, 10)}.csv`;
+  link.click();
+}
 
 const memberColumns = [
   { title: '姓名', dataIndex: 'name', key: 'name', width: 100 },

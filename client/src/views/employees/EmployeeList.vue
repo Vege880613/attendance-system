@@ -9,6 +9,7 @@
         <a-select-option value="manager">管理人员</a-select-option>
       </a-select>
       <a-button type="primary" @click="showCreate">新增员工</a-button>
+      <a-button @click="exportData">📥 导出</a-button>
     </a-space>
 
     <a-table :columns="columns" :data-source="list" row-key="id" :pagination="{ pageSize: 20 }" size="small">
@@ -20,6 +21,12 @@
           <a-tag :color="record.status === 'active' ? 'green' : 'red'">
             {{ record.status === 'active' ? '在职' : '离职' }}
           </a-tag>
+        </template>
+        <template v-if="column.key === 'created_at'">
+          <span style="font-size:12px;color:#999;">{{ record.created_at || '-' }}</span>
+        </template>
+        <template v-if="column.key === 'updated_at'">
+          <span style="font-size:12px;color:#999;">{{ record.updated_at || '-' }}</span>
         </template>
         <template v-if="column.key === 'action'">
           <a-space>
@@ -90,8 +97,34 @@ const columns = [
   { title: '班组', dataIndex: 'team_name', key: 'team_name', width: 100 },
   { title: '入职日期', dataIndex: 'hire_date', key: 'hire_date', width: 100 },
   { title: '状态', dataIndex: 'status', key: 'status', width: 60 },
+  { title: '创建时间', dataIndex: 'created_at', key: 'created_at', width: 120 },
+  { title: '更新时间', dataIndex: 'updated_at', key: 'updated_at', width: 120 },
   { title: '操作', key: 'action', width: 120 }
 ]
+
+// 导出功能
+function exportData() {
+  const headers = ['username', 'employee_id', 'name', 'role', 'team_name', 'hire_date', 'status', 'created_at', 'updated_at'];
+  const headerLabels = ['用户名', '工号', '姓名', '角色', '班组', '入职日期', '状态', '创建时间', '更新时间'];
+
+  const csvRows = [headerLabels.join(',')];
+  list.value.forEach(row => {
+    const values = headers.map(h => {
+      let val = row[h];
+      if (val === null || val === undefined) val = '';
+      val = String(val).replace(/"/g, '""');
+      return `"${val}"`;
+    });
+    csvRows.push(values.join(','));
+  });
+
+  const csvContent = '﻿' + csvRows.join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `员工列表_${new Date().toISOString().slice(0, 10)}.csv`;
+  link.click();
+}
 
 const roleLabel = (r) => ({ employee: '员工', team_lead: '班组长', dept_manager: '部门经理', manager: '管理人员' }[r])
 const roleColor = (r) => ({ employee: 'blue', team_lead: 'orange', dept_manager: 'purple', manager: 'red' }[r])

@@ -4,6 +4,18 @@ const { calcEffectiveHours, isShortage } = require('../utils/businessRules');
 
 const router = require('express').Router();
 
+// 辅助函数：生成CSV
+function toCSV(columns, rows) {
+  const header = columns.join(',');
+  const lines = rows.map(row => columns.map(c => {
+    let val = row[c];
+    if (val === null || val === undefined) val = '';
+    val = String(val).replace(/"/g, '""');
+    return `"${val}"`;
+  }).join(','));
+  return [header, ...lines].join('\n');
+}
+
 router.get('/', authRequired, (req, res) => {
   const { yearMonth, userId } = req.query;
   if (!yearMonth) return res.status(400).json({ message: '请指定年月' });
@@ -32,7 +44,7 @@ router.get('/', authRequired, (req, res) => {
   let leaves = [];
   if (targetUserId) {
     leaves = db.prepare(`
-      SELECT id, user_id, type, start_date, end_date, days, leave_type_used, reason, status
+      SELECT id, user_id, type, start_date, end_date, days, leave_type_used, reason, status, created_at, created_by, updated_at, updated_by
       FROM attendance_requests
       WHERE user_id = ? AND status = 'entered' AND type = 'leave'
         AND strftime('%Y-%m', start_date) <= ?
@@ -43,23 +55,47 @@ router.get('/', authRequired, (req, res) => {
   res.json({ list, leaves });
 });
 
+// 导出考勤记录
+router.get('/export', authRequired, requireRole('manager'), (req, res) => {
+  const { yearMonth } = req.query;
+  if (!yearMonth) return res.status(400).json({ message: '请指定年月' });
+
+  const list = db.prepare(`
+    SELECT a.user_id, u.name AS user_name, u.team_id, a.work_date, a.check_in, a.check_out,
+           a.effective_hours, a.standard_hours, a.is_shortage, a.offset_type, a.offset_units,
+           a.remark, a.is_reset_before, a.created_at, a.created_by, a.updated_at, a.updated_by
+    FROM attendance_records a
+    JOIN users u ON a.user_id = u.id
+    WHERE strftime('%Y-%m', a.work_date) = ?
+    ORDER BY u.team_id, a.user_id, a.work_date ASC
+  `).all(yearMonth);
+
+  const columns = ['user_id', 'user_name', 'team_id', 'work_date', 'check_in', 'check_out', 'effective_hours', 'standard_hours', 'is_shortage', 'offset_type', 'offset_units', 'remark', 'is_reset_before', 'created_at', 'created_by', 'updated_at', 'updated_by'];
+  const csv = toCSV(columns, list);
+
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename=attendance_${yearMonth}.csv`);
+  res.send('﻿' + csv);
+});
+
 router.post('/batch', authRequired, requireRole('manager'), (req, res) => {
   const { yearMonth, records } = req.body;
   if (!yearMonth || !Array.isArray(records)) return res.status(400).json({ message: '参数不合法' });
 
   const insert = db.prepare(`
-    INSERT INTO attendance_records (user_id, work_date, check_in, check_out, effective_hours, is_shortage, remark)
-    VALUES (?,?,?,?,?,?,?)
+    INSERT INTO attendance_records (user_id, work_date, check_in, check_out, effective_hours, is_shortage, remark, created_by)
+    VALUES (?,?,?,?,?,?,?,?)
     ON CONFLICT(user_id, work_date) DO UPDATE SET
       check_in=excluded.check_in, check_out=excluded.check_out,
-      effective_hours=excluded.effective_hours, is_shortage=excluded.is_shortage, remark=excluded.remark
+      effective_hours=excluded.effective_hours, is_shortage=excluded.is_shortage, remark=excluded.remark,
+      updated_by=excluded.created_by
   `);
 
   const tx = db.transaction((rows) => {
     for (const r of rows) {
       const effective = calcEffectiveHours(r.check_in, r.check_out);
       const shortage = isShortage(effective) ? 1 : 0;
-      insert.run(r.user_id, `${yearMonth}-${String(r.day).padStart(2, '0')}`, r.check_in || null, r.check_out || null, effective, shortage, r.remark || null);
+      insert.run(r.user_id, `${yearMonth}-${String(r.day).padStart(2, '0')}`, r.check_in || null, r.check_out || null, effective, shortage, r.remark || null, req.user.id);
     }
   });
   tx(records);
@@ -107,13 +143,13 @@ router.put('/offset', authRequired, requireRole('manager'), (req, res) => {
       const tx = db.transaction(() => {
         db.prepare('UPDATE leave_balances SET used_days = used_days + ? WHERE id = ?').run(daysToConsume, bal.id);
         if (recordId) {
-          db.prepare('UPDATE attendance_records SET offset_type=?, offset_units=?, is_shortage=0 WHERE id=?').run('annual_leave', daysToConsume, recordId);
+          db.prepare('UPDATE attendance_records SET offset_type=?, offset_units=?, is_shortage=0, updated_by=? WHERE id=?').run('annual_leave', daysToConsume, req.user.id, recordId);
         } else {
-          const info = db.prepare('INSERT INTO attendance_records (user_id, work_date, effective_hours, is_shortage, offset_type, offset_units) VALUES (?,?,0,0,?,?)').run(userId, date, 'annual_leave', daysToConsume);
+          const info = db.prepare('INSERT INTO attendance_records (user_id, work_date, effective_hours, is_shortage, offset_type, offset_units, created_by) VALUES (?,?,0,0,?,?,?)').run(userId, date, 'annual_leave', daysToConsume, req.user.id);
           recordId = info.lastInsertRowid;
         }
         // 创建请假记录（用于请假明细展示）
-        db.prepare(`INSERT INTO attendance_requests (user_id, type, leave_type_used, start_date, end_date, days, status, reason, manager_id, manager_comment, manager_time) VALUES (?, 'leave', 'annual', ?, ?, ?, 'entered', '考勤抵扣', ?, '管理员抵扣', datetime('now','localtime'))`).run(userId, date, date, daysToConsume, req.user.id);
+        db.prepare(`INSERT INTO attendance_requests (user_id, type, leave_type_used, start_date, end_date, days, status, reason, manager_id, manager_comment, manager_time, created_by) VALUES (?, 'leave', 'annual', ?, ?, ?, 'entered', '考勤抵扣', ?, '管理员抵扣', datetime('now','localtime'), ?)`).run(userId, date, date, daysToConsume, req.user.id, req.user.id);
       });
       tx();
     } else if (offsetType === 'compensatory_leave') {
@@ -155,13 +191,13 @@ router.put('/offset', authRequired, requireRole('manager'), (req, res) => {
         }
         db.prepare('UPDATE leave_balances SET used_days = used_days + ? WHERE user_id = ? AND leave_type = ? AND year = ?').run(totalDays, userId, 'compensatory', year);
         if (recordId) {
-          db.prepare('UPDATE attendance_records SET offset_type=?, offset_units=?, is_shortage=0 WHERE id=?').run('compensatory_leave', totalDays, recordId);
+          db.prepare('UPDATE attendance_records SET offset_type=?, offset_units=?, is_shortage=0, updated_by=? WHERE id=?').run('compensatory_leave', totalDays, req.user.id, recordId);
         } else {
-          const info = db.prepare('INSERT INTO attendance_records (user_id, work_date, effective_hours, is_shortage, offset_type, offset_units) VALUES (?,?,0,0,?,?)').run(userId, date, 'compensatory_leave', totalDays);
+          const info = db.prepare('INSERT INTO attendance_records (user_id, work_date, effective_hours, is_shortage, offset_type, offset_units, created_by) VALUES (?,?,0,0,?,?,?)').run(userId, date, 'compensatory_leave', totalDays, req.user.id);
           recordId = info.lastInsertRowid;
         }
         // 创建请假记录（用于请假明细展示）
-        db.prepare(`INSERT INTO attendance_requests (user_id, type, leave_type_used, start_date, end_date, days, status, reason, manager_id, manager_comment, manager_time) VALUES (?, 'leave', 'compensatory', ?, ?, ?, 'entered', '考勤抵扣', ?, '管理员抵扣', datetime('now','localtime'))`).run(userId, date, date, totalDays, req.user.id);
+        db.prepare(`INSERT INTO attendance_requests (user_id, type, leave_type_used, start_date, end_date, days, status, reason, manager_id, manager_comment, manager_time, created_by) VALUES (?, 'leave', 'compensatory', ?, ?, ?, 'entered', '考勤抵扣', ?, '管理员抵扣', datetime('now','localtime'), ?)`).run(userId, date, date, totalDays, req.user.id, req.user.id);
       });
       tx();
     } else {

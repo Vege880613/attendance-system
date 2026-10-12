@@ -6,6 +6,7 @@
         <a-select-option v-for="u in employees" :key="u.id" :value="u.id">{{ u.name }}</a-select-option>
       </a-select>
       <a-button type="primary" @click="fetchList">查询</a-button>
+      <a-button @click="exportData">📥 导出</a-button>
     </a-space>
 
     <a-table
@@ -138,11 +139,15 @@ const offsetLabel = (type) => ({
 
 const columns = [
   { title: '日期', dataIndex: 'work_date', key: 'work_date', width: 120 },
+  { title: '类型', key: 'type_display', width: 80 },
   { title: '上班打卡', dataIndex: 'check_in', key: 'check_in', width: 100 },
   { title: '下班打卡', dataIndex: 'check_out', key: 'check_out', width: 100 },
   { title: '有效工时', dataIndex: 'effective_hours', key: 'effective_hours', width: 120 },
   { title: '备注', dataIndex: 'remark', key: 'remark' },
-  { title: '抵扣', key: 'offset', width: 160 }
+  { title: '抵扣', key: 'offset', width: 160 },
+  { title: '创建时间', dataIndex: 'created_at', key: 'created_at', width: 120 },
+  { title: '更新时间', dataIndex: 'updated_at', key: 'updated_at', width: 120 },
+  { title: '操作', key: 'action', width: 80 }
 ]
 
 async function fetchList() {
@@ -248,18 +253,24 @@ async function fetchEmployees() {
 }
 
 async function showOffset(record) {
+  if (!record.user_id && !selectedUser.value) {
+    message.warning('请先选择员工')
+    return
+  }
   currentRecord.value = record
   offsetForm.value = { offsetType: 'annual_leave', offsetUnits: 1, overtimeUnitIds: [] }
   offsetVisible.value = true
 
+  const userId = record.user_id || selectedUser.value
+
   // 获取年假余额
   const year = new Date(record.work_date).getFullYear()
-  const balRes = await leaveApi.balance(record.user_id)
+  const balRes = await leaveApi.balance(userId)
   const annual = balRes.list.find(b => b.leave_type === 'annual')
   annualBalance.value = annual ? (annual.entitled_days - annual.used_days).toFixed(1) : 0
 
   // 获取可用加班单位
-  const otRes = await overtimeApi.available(record.user_id)
+  const otRes = await overtimeApi.available(userId)
   availableUnits.value = otRes.list
 }
 
@@ -291,6 +302,33 @@ async function onOffset() {
   } finally {
     offsetLoading.value = false
   }
+}
+
+// 导出功能
+function exportData() {
+  const headers = ['work_date', 'type_display', 'check_in', 'check_out', 'effective_hours', 'remark', 'offset_type', 'created_at', 'updated_at'];
+  const headerLabels = ['日期', '类型', '上班打卡', '下班打卡', '有效工时', '备注', '抵扣', '创建时间', '更新时间'];
+
+  const csvRows = [headerLabels.join(',')];
+  records.value.forEach(row => {
+    const values = headers.map(h => {
+      let val = row[h];
+      if (h === 'offset_type' && row.offset_type !== 'none') {
+        val = offsetLabel(row.offset_type) + ' ' + (row.offset_units || '');
+      }
+      if (val === null || val === undefined) val = '';
+      val = String(val).replace(/"/g, '""');
+      return `"${val}"`;
+    });
+    csvRows.push(values.join(','));
+  });
+
+  const csvContent = '﻿' + csvRows.join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `月度考勤_${yearMonth.value ? yearMonth.value.format('YYYY-MM') : 'export'}.csv`;
+  link.click();
 }
 
 onMounted(() => {

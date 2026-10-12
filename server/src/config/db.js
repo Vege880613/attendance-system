@@ -20,14 +20,20 @@ db.exec(`
     team_id INTEGER DEFAULT NULL,
     hire_date TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','resigned')),
-    created_at TEXT DEFAULT (datetime('now','localtime'))
+    created_at TEXT DEFAULT (datetime('now','localtime')),
+    created_by TEXT,
+    updated_at TEXT,
+    updated_by TEXT
   );
 
   CREATE TABLE IF NOT EXISTS teams (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     lead_user_id INTEGER DEFAULT NULL,
-    created_at TEXT DEFAULT (datetime('now','localtime'))
+    created_at TEXT DEFAULT (datetime('now','localtime')),
+    created_by TEXT,
+    updated_at TEXT,
+    updated_by TEXT
   );
 
   CREATE TABLE IF NOT EXISTS attendance_records (
@@ -41,8 +47,16 @@ db.exec(`
     is_shortage INTEGER DEFAULT 0,
     offset_type TEXT DEFAULT 'none' CHECK(offset_type IN ('none','overtime','annual_leave')),
     offset_units REAL DEFAULT 0,
+    is_reset_before INTEGER DEFAULT 0,
     remark TEXT,
     created_at TEXT DEFAULT (datetime('now','localtime')),
+    created_by TEXT,
+    updated_at TEXT,
+    updated_by TEXT,
+    approved_at TEXT,
+    approved_by TEXT,
+    rejected_at TEXT,
+    rejected_by TEXT,
     UNIQUE(user_id, work_date)
   );
 
@@ -54,7 +68,14 @@ db.exec(`
     units_count INTEGER NOT NULL DEFAULT 1,
     status TEXT DEFAULT 'pending' CHECK(status IN ('pending','approved','used','cancelled')),
     request_id INTEGER DEFAULT NULL,
-    created_at TEXT DEFAULT (datetime('now','localtime'))
+    created_at TEXT DEFAULT (datetime('now','localtime')),
+    created_by TEXT,
+    updated_at TEXT,
+    updated_by TEXT,
+    approved_at TEXT,
+    approved_by TEXT,
+    rejected_at TEXT,
+    rejected_by TEXT
   );
 
   CREATE TABLE IF NOT EXISTS leave_balances (
@@ -64,7 +85,12 @@ db.exec(`
     year INTEGER NOT NULL,
     entitled_days REAL NOT NULL DEFAULT 0,
     used_days REAL NOT NULL DEFAULT 0,
+    reset_used_days REAL DEFAULT 0,
+    reset_at TEXT,
     created_at TEXT DEFAULT (datetime('now','localtime')),
+    created_by TEXT,
+    updated_at TEXT,
+    updated_by TEXT,
     UNIQUE(user_id, leave_type, year)
   );
 
@@ -91,6 +117,13 @@ db.exec(`
     manager_time TEXT,
     needs_dept_manager INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now','localtime')),
+    created_by TEXT,
+    updated_at TEXT,
+    updated_by TEXT,
+    approved_at TEXT,
+    approved_by TEXT,
+    rejected_at TEXT,
+    rejected_by TEXT,
     annual_days REAL DEFAULT 0
   );
 
@@ -108,7 +141,10 @@ db.exec(`
     type TEXT NOT NULL DEFAULT 'project' CHECK(type IN ('project','system_maintenance')),
     description TEXT,
     status TEXT DEFAULT 'active' CHECK(status IN ('active','completed','paused')),
-    created_at TEXT DEFAULT (datetime('now','localtime'))
+    created_at TEXT DEFAULT (datetime('now','localtime')),
+    created_by TEXT,
+    updated_at TEXT,
+    updated_by TEXT
   );
 
   CREATE TABLE IF NOT EXISTS holidays (
@@ -117,7 +153,10 @@ db.exec(`
     name TEXT NOT NULL,
     type TEXT NOT NULL CHECK(type IN ('holiday','workday')),
     year INTEGER NOT NULL,
-    created_at TEXT DEFAULT (datetime('now','localtime'))
+    created_at TEXT DEFAULT (datetime('now','localtime')),
+    created_by TEXT,
+    updated_at TEXT,
+    updated_by TEXT
   );
 `);
 

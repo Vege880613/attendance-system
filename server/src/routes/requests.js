@@ -6,7 +6,14 @@ const router = require('express').Router();
 
 router.post('/', authRequired, (req, res) => {
   const { type, subtype, start_date, end_date, days, overtime_units_used, leave_type_used, reason, project_id, overtime_unit_ids, annual_days } = req.body;
+  console.log('=== 创建申请 ===');
+  console.log('leave_type_used:', leave_type_used);
+  console.log('annual_days:', annual_days);
+  console.log('days:', days);
   if (!type || !start_date || !end_date) return res.status(400).json({ message: '缺少必要字段' });
+
+  // 计算年假使用天数（用于混合抵扣）
+  const annualDaysUsed = leave_type_used === 'mixed' ? (Number(annual_days) || 0) : 0;
 
   // 加班申请必须选择项目
   if (type === 'overtime' && !project_id) {
@@ -32,7 +39,6 @@ router.post('/', authRequired, (req, res) => {
     // 计算规则：1个加班单位=0.5天，但1整天需要3个单位（不是2个）
     const totalUnits = units.reduce((sum, u) => sum + u.units_count, 0);
     const totalDays = Math.floor(totalUnits / 3) + (totalUnits % 3 > 0 ? 0.5 : 0);
-    const annualDaysUsed = leave_type_used === 'mixed' ? (Number(annual_days) || 0) : 0;
     const expectedCompDays = Number(days) - annualDaysUsed;
     if (Math.abs(totalDays - expectedCompDays) > 0.01) {
       return res.status(400).json({

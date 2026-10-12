@@ -14,6 +14,7 @@
             <a-select-option value="used">已使用(调休抵扣)</a-select-option>
           </a-select>
           <a-button type="primary" @click="fetchList">查询</a-button>
+          <a-button @click="exportUnits">📥 导出</a-button>
         </a-space>
 
         <a-table :columns="columns" :data-source="list" row-key="id" :pagination="{ pageSize: 20 }" size="small">
@@ -43,6 +44,7 @@
           </a-select>
           <a-month-picker v-model:value="detailMonth" placeholder="选择月份" @change="fetchDetail" />
           <a-button type="primary" @click="fetchDetail">查询</a-button>
+          <a-button @click="exportDetails">📥 导出</a-button>
         </a-space>
 
         <a-row :gutter="16" style="margin-bottom:16px;">
@@ -129,8 +131,37 @@ const columns = [
   { title: '加班时长', dataIndex: 'hours', key: 'hours', width: 100 },
   { title: '单位数', dataIndex: 'units_count', key: 'units_count', width: 80 },
   { title: '状态', dataIndex: 'status', key: 'status', width: 100 },
-  { title: '假请标记', key: 'leave_mark', width: 100 }
+  { title: '假请标记', key: 'leave_mark', width: 100 },
+  { title: '创建时间', dataIndex: 'created_at', key: 'created_at', width: 120 },
+  { title: '更新时间', dataIndex: 'updated_at', key: 'updated_at', width: 120 },
+  { title: '审批时间', dataIndex: 'approved_at', key: 'approved_at', width: 120 }
 ]
+
+// 导出功能
+function exportCSV(columns, rows, filename) {
+  const headers = columns.map(c => c.title || c.dataIndex).join(',');
+  const lines = rows.map(row => columns.map(c => {
+    let val = row[c.dataIndex || c.key] || '';
+    val = String(val).replace(/"/g, '""');
+    return `"${val}"`;
+  }).join(','));
+  const csv = '﻿' + [headers, ...lines].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  link.click();
+}
+
+function exportUnits() {
+  const cols = columns.filter(c => c.key !== 'leave_mark');
+  exportCSV(cols, list.value, `加班单位_${new Date().toISOString().slice(0,10)}.csv`);
+}
+
+function exportDetails() {
+  const cols = detailColumns.filter(c => !['leave_mark', 'leave_dates', 'convert', 'project', 'reason'].includes(c.key));
+  exportCSV(cols, detailList.value, `加班明细_${detailMonth.value ? detailMonth.value.format('YYYY-MM') : 'export'}.csv`);
+}
 
 const detailList = ref([])
 const detailUser = ref(authStore.isManager ? null : authStore.user.id)

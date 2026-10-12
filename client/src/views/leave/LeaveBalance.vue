@@ -22,6 +22,7 @@
             <p v-if="item.hasBalance" style="margin-top:8px;">已使用: <b>{{ item.used_days }}</b> 天</p>
             <p v-if="item.hasBalance">总额度: <b>{{ item.entitled_days }}</b> 天</p>
             <p v-if="item.hasBalance">剩余: <b style="color:#52c41a;">{{ (item.entitled_days - item.used_days).toFixed(1) }}</b> 天</p>
+            <p v-if="item.reset_at" style="font-size:11px;color:#999;margin-top:4px;">⏱ 重置于 {{ item.reset_at.slice(0,10) }}（之前已用 {{ item.reset_used_days }} 天）</p>
             <p v-if="item.hasBalance" class="click-tip">点击查看明细 →</p>
           </a-card>
         </a-col>
@@ -32,7 +33,10 @@
     </a-card>
 
     <!-- 假期明细弹窗 -->
-    <a-modal v-model:open="detailVisible" :title="`${detailTitle} - 请假明细`" :footer="null" width="800">
+    <a-modal v-model:open="detailVisible" :title="`${detailTitle} - 请假明细`" :footer="null" width="900">
+      <div v-if="detailList.some(r => r.is_reset_before)" style="margin-bottom:12px;padding:8px 12px;background:#fffbe6;border:1px solid #ffe58f;border-radius:4px;font-size:12px;color:#d46b08;">
+        ⚠️ 标记为「重置前」的记录不计入当前年度统计
+      </div>
       <a-table
         :columns="detailColumns"
         :data-source="detailList"
@@ -43,6 +47,13 @@
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'date_range'">
             {{ record.start_date }} ~ {{ record.end_date }}
+          </template>
+          <template v-if="column.key === 'days'">
+            {{ record.days }} 天
+          </template>
+          <template v-if="column.key === 'is_reset_before'">
+            <a-tag v-if="record.is_reset_before" color="warning">重置前</a-tag>
+            <span v-else style="color:#999;">-</span>
           </template>
           <template v-if="column.key === 'team_lead_name'">
             <span v-if="record.team_lead_name" style="color:#52c41a;">{{ record.team_lead_name }}</span>
@@ -95,6 +106,8 @@ const displayBalances = computed(() => {
       leave_type: type,
       entitled_days: found ? found.entitled_days : 0,
       used_days: found ? found.used_days : 0,
+      reset_used_days: found ? found.reset_used_days : 0,
+      reset_at: found ? found.reset_at : null,
       hasBalance: type === 'annual' || type === 'compensatory'
     }
   })
@@ -114,8 +127,9 @@ const typeDesc = (item) => ({
 
 const detailColumns = [
   { title: '日期范围', key: 'date_range', width: 160 },
-  { title: '天数', dataIndex: 'days', key: 'days', width: 50 },
+  { title: '天数', key: 'days', width: 50 },
   { title: '原因', dataIndex: 'reason', key: 'reason' },
+  { title: '重置标识', key: 'is_reset_before', width: 70 },
   { title: '班组长审批', key: 'team_lead_name', width: 80 },
   { title: '班组长意见', dataIndex: 'team_lead_comment', key: 'team_lead_comment' },
   { title: '部门经理审批', key: 'dept_manager_name', width: 80 },
