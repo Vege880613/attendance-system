@@ -127,6 +127,8 @@ const leaveInfoVisible = ref(false)
 const currentLeaveInfo = ref({})
 
 const columns = [
+  { title: '姓名', key: 'user_name', width: 80 },
+  { title: '工号', key: 'employee_id', width: 80 },
   { title: '日期', dataIndex: 'work_date', key: 'work_date', width: 120 },
   { title: '加班时长', dataIndex: 'hours', key: 'hours', width: 100 },
   { title: '单位数', dataIndex: 'units_count', key: 'units_count', width: 80 },
@@ -169,6 +171,8 @@ const detailMonth = ref(dayjs())
 const summary = ref({})
 
 const detailColumns = [
+  { title: '姓名', key: 'user_name', width: 80 },
+  { title: '工号', key: 'employee_id', width: 80 },
   { title: '日期', dataIndex: 'work_date', key: 'work_date', width: 120 },
   { title: '加班时长', dataIndex: 'hours', key: 'hours', width: 80 },
   { title: '单位数', dataIndex: 'units_count', key: 'units_count', width: 70 },

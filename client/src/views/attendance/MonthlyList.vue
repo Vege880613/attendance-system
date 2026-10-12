@@ -17,7 +17,12 @@
       size="small"
     >
       <template #bodyCell="{ column, record }">
-        <template v-if="column.key === 'work_date'">
+        <template v-if="column.key === 'user_name'">
+          {{ record.user_name || (selectedUser ? employees.find(e => e.id === selectedUser)?.name : '-') }}
+        </template>
+        <template v-if="column.key === 'employee_id'">
+          {{ record.employee_id || (selectedUser ? employees.find(e => e.id === selectedUser)?.employee_id : '-') }}
+        </template>
           <span :style="{ color: record.type === 'holiday' ? '#cf1322' : 'inherit' }">
             {{ record.work_date }}
             <span v-if="record.holiday_name" style="color:#cf1322;font-size:12px;">
@@ -138,6 +143,8 @@ const offsetLabel = (type) => ({
 }[type] || type)
 
 const columns = [
+  { title: '姓名', key: 'user_name', width: 80 },
+  { title: '工号', key: 'employee_id', width: 80 },
   { title: '日期', dataIndex: 'work_date', key: 'work_date', width: 120 },
   { title: '类型', key: 'type_display', width: 80 },
   { title: '上班打卡', dataIndex: 'check_in', key: 'check_in', width: 100 },

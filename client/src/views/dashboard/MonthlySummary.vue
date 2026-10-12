@@ -137,6 +137,7 @@ const weekDay = (d) => ['日', '一', '二', '三', '四', '五', '六'][d]
 
 const summaryColumns = [
   { title: '姓名', dataIndex: 'userName', key: 'userName', width: 80 },
+  { title: '工号', dataIndex: 'employee_id', key: 'employee_id', width: 80 },
   { title: '班组', dataIndex: 'teamName', key: 'teamName', width: 100 },
   { title: '工作日', dataIndex: ['summary', 'workDays'], key: 'workDays', width: 70 },
   { title: '正常', dataIndex: ['summary', 'normalDays'], key: 'normalDays', width: 60 },

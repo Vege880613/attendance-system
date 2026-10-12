@@ -17,7 +17,7 @@ function toCSV(columns, rows) {
 
 router.get('/', authRequired, (req, res) => {
   const { userId, status } = req.query;
-  let sql = `SELECT o.*, u.name AS user_name,
+  let sql = `SELECT o.*, u.name AS user_name, u.employee_id,
                     o.created_at, o.created_by, o.updated_at, o.updated_by,
                     o.approved_at, o.approved_by, o.rejected_at, o.rejected_by
              FROM overtime_units o JOIN users u ON o.user_id = u.id WHERE 1=1`;

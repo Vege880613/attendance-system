@@ -22,7 +22,7 @@ router.get('/summary', authRequired, requireRole('manager', 'team_lead'), (req, 
   }
 
   const users = db.prepare(`
-    SELECT u.id, u.name, u.team_id, t.name AS team_name
+    SELECT u.id, u.name, u.employee_id, u.team_id, t.name AS team_name
     FROM users u LEFT JOIN teams t ON u.team_id = t.id
     WHERE u.status = 'active' AND u.role != 'manager' ${userFilter}
     ORDER BY u.team_id, u.id
@@ -203,6 +203,7 @@ router.get('/summary', authRequired, requireRole('manager', 'team_lead'), (req, 
     return {
       userId: user.id,
       userName: user.name,
+      employeeId: user.employee_id,
       teamName: user.team_name,
       summary: {
         totalDays: daysInMonth,
