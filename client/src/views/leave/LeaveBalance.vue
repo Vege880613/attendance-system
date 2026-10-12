@@ -52,6 +52,9 @@
           <template v-if="column.key === 'days'">
             {{ record.days }} 天
           </template>
+          <template v-if="column.key === 'created_at'">
+            {{ record.created_at ? record.created_at.slice(0, 16).replace('T', ' ') : '-' }}
+          </template>
           <template v-if="column.key === 'is_reset_before'">
             <a-tag v-if="record.is_reset_before" color="warning">重置前</a-tag>
             <span v-else style="color:#999;">-</span>
@@ -130,6 +133,7 @@ const detailColumns = [
   { title: '日期范围', key: 'date_range', width: 160 },
   { title: '天数', key: 'days', width: 50 },
   { title: '原因', dataIndex: 'reason', key: 'reason' },
+  { title: '申请时间', dataIndex: 'created_at', key: 'created_at', width: 120 },
   { title: '重置标识', key: 'is_reset_before', width: 70 },
   { title: '班组长审批', key: 'team_lead_name', width: 80 },
   { title: '班组长意见', dataIndex: 'team_lead_comment', key: 'team_lead_comment' },
