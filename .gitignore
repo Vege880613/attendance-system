@@ -4,3 +4,5 @@ node_modules/
 *.log
 .backup_*
 dist/
+*.db-shm
+*.db-wal
