@@ -209,6 +209,15 @@ router.post('/annual/init', authRequired, requireRole('manager'), (req, res) => 
         AND offset_type = 'annual_leave'
     `).run();
 
+    // 标记重置前的请假申请记录
+    db.prepare(`
+      UPDATE attendance_requests
+      SET is_reset_before = 1
+      WHERE user_id IN (SELECT id FROM users WHERE status = 'active' AND role IN ('employee','team_lead','manager'))
+        AND type = 'leave'
+        AND status = 'entered'
+    `).run();
+
     // 初始化年假余额
     for (const u of users) {
       const entitled = adjustMap[u.id] !== undefined ? adjustMap[u.id] : annualLeaveDays(u.hire_date, targetYear);
