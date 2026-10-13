@@ -180,28 +180,67 @@ async function fetchSummary() {
   }
 }
 
-// 导出功能
-function exportData() {
-  const headers = ['userName', 'employeeId', 'teamName', 'workDays', 'normalDays', 'shortageDays', 'leaveDays', 'absentDays', 'overtimeUnits', 'annualLeaveRemaining', 'compLeaveRemaining']
-  const headerLabels = ['姓名', '工号', '班组', '工作日', '正常', '缺卡', '请假', '旷工', '加班单位', '年假剩余', '调休剩余']
+// 导出功能 - 两个 sheet
+async function exportData() {
+  // 动态导入 xlsx 库
+  const XLSX = await import('xlsx')
 
-  const csvRows = [headerLabels.join(',')]
+  // Sheet1: 汇总数据
+  const summaryHeaders = ['姓名', '工号', '班组', '工作日', '正常', '缺卡', '请假', '旷工', '加班单位', '年假剩余', '调休剩余']
+  const summaryData = [summaryHeaders]
   list.value.forEach(row => {
-    const values = headers.map(h => {
-      let val = row[h]
-      if (val === null || val === undefined) val = ''
-      val = String(val).replace(/"/g, '""')
-      return `"${val}"`
-    })
-    csvRows.push(values.join(','))
+    const s = row.summary || {}
+    summaryData.push([
+      row.userName || '',
+      row.employeeId || '',
+      row.teamName || '',
+      s.workDays || 0,
+      s.normalDays || 0,
+      s.shortageDays || 0,
+      s.leaveDays || 0,
+      s.absentDays || 0,
+      s.overtimeUnits || 0,
+      s.annualLeaveRemaining || 0,
+      s.compLeaveRemaining || 0
+    ])
   })
 
-  const csvContent = '﻿' + csvRows.join('\n')
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-  const link = document.createElement('a')
-  link.href = URL.createObjectURL(blob)
-  link.download = `月度汇总_${yearMonth.value?.format('YYYY-MM') || ''}_${new Date().toISOString().slice(0, 10)}.csv`
-  link.click()
+  // Sheet2: 明细数据（全部字段）
+  const detailHeaders = ['姓名', '工号', '班组', '日期', '星期', '状态', '类型', '上班打卡', '下班打卡', '有效工时', '假期类型', '请假原因', '备注', '抵扣类型', '抵扣数量']
+  const detailData = [detailHeaders]
+  list.value.forEach(row => {
+    const dailyDetails = row.dailyDetails || []
+    dailyDetails.forEach(day => {
+      detailData.push([
+        row.userName || '',
+        row.employeeId || '',
+        row.teamName || '',
+        day.date || '',
+        ['日', '一', '二', '三', '四', '五', '六'][day.dayOfWeek] || '',
+        day.status || '',
+        day.type || '',
+        day.checkIn || '',
+        day.checkOut || '',
+        day.effectiveHours || 0,
+        day.leaveTypeName || '',
+        day.leaveReason || '',
+        day.remark || '',
+        day.offsetType || '',
+        day.offsetUnits || 0
+      ])
+    })
+  })
+
+  // 创建工作簿
+  const wb = XLSX.utils.book_new()
+  const ws1 = XLSX.utils.aoa_to_sheet(summaryData)
+  const ws2 = XLSX.utils.aoa_to_sheet(detailData)
+  XLSX.utils.book_append_sheet(wb, ws1, '汇总数据')
+  XLSX.utils.book_append_sheet(wb, ws2, '明细数据')
+
+  // 导出文件
+  const fileName = `月度汇总_${yearMonth.value?.format('YYYY-MM') || ''}_${new Date().toISOString().slice(0, 10)}.xlsx`
+  XLSX.writeFile(wb, fileName)
 }
 
 async function fetchEmployees() {
