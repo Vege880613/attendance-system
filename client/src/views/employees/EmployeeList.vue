@@ -52,6 +52,9 @@
         <a-form-item label="工号" name="employee_id">
           <a-input v-model:value="editing.employee_id" placeholder="请输入工号（与姓名唯一）" />
         </a-form-item>
+        <a-form-item label="入职本司时间" name="company_hire_date">
+          <a-date-picker v-model:value="editing.company_hire_date" style="width:100%;" />
+        </a-form-item>
         <a-form-item label="角色" name="role">
           <a-select v-model:value="editing.role">
             <a-select-option value="employee">员工</a-select-option>
@@ -154,6 +157,7 @@ function showEdit(record) {
     username: record.username,
     name: record.name,
     employee_id: record.employee_id || '',
+    company_hire_date: record.company_hire_date ? dayjs(record.company_hire_date) : null,
     role: record.role,
     team_id: record.team_id,
     hire_date: dayjs(record.hire_date),
@@ -172,7 +176,8 @@ async function onSave() {
     role: editing.role,
     team_id: editing.team_id,
     hire_date: dayjs(editing.hire_date).format('YYYY-MM-DD'),
-    employee_id: editing.employee_id || null
+    employee_id: editing.employee_id || null,
+    company_hire_date: editing.company_hire_date ? dayjs(editing.company_hire_date).format('YYYY-MM-DD') : null
   }
   if (editing.id) {
     await userApi.update(editing.id, payload)
