@@ -139,9 +139,12 @@ import {
 import { useAuthStore } from '../stores/auth'
 
 const authStore = useAuthStore()
+const route = useRoute()
+const router = useRouter()
 const collapsed = ref(false)
 const mobileMenuVisible = ref(false)
 const isMobile = ref(window.innerWidth <= 768)
+const selectedKeys = ref([route.path])
 
 const checkMobile = () => {
   isMobile.value = window.innerWidth <= 768
@@ -159,16 +162,6 @@ function onMenuClickMobile({ key }) {
   mobileMenuVisible.value = false
   router.push(key)
 }
-
-function onMenuClick({ key }) {
-  router.push(key)
-}
-
-const route = useRoute()
-const router = useRouter()
-const authStore = useAuthStore()
-const collapsed = ref(false)
-const selectedKeys = ref([route.path])
 
 const userName = computed(() => authStore.user?.name || '')
 const roleLabel = computed(() => ({
