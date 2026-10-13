@@ -57,9 +57,11 @@ async function onSubmit() {
   align-items: center;
   justify-content: center;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 16px;
 }
 .login-card {
-  width: 400px;
+  width: 100%;
+  max-width: 400px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.15);
 }
 .login-tip {
@@ -67,5 +69,10 @@ async function onSubmit() {
   color: #999;
   font-size: 12px;
   margin-top: 12px;
+}
+@media (max-width: 768px) {
+  .login-card {
+    margin: 0 16px;
+  }
 }
 </style>

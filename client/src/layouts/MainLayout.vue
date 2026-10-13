@@ -1,6 +1,67 @@
 <template>
   <a-layout class="main-layout">
-    <a-layout-sider v-model:collapsed="collapsed" collapsible theme="light">
+    <!-- 移动端顶部栏 -->
+    <a-layout-header v-if="isMobile" class="mobile-header">
+      <menu-outlined style="font-size:18px;color:#fff;" @click="mobileMenuVisible = true" />
+      <span class="mobile-title">人员考勤管理系统</span>
+      <a-dropdown>
+        <span style="color:#fff;cursor:pointer;">{{ userName?.charAt(0) }}</span>
+        <template #overlay>
+          <a-menu>
+            <a-menu-item @click="onLogout">退出登录</a-menu-item>
+          </a-menu>
+        </template>
+      </a-dropdown>
+    </a-layout-header>
+
+    <!-- 移动端抽屉菜单 -->
+    <a-drawer
+      v-if="isMobile"
+      v-model:open="mobileMenuVisible"
+      placement="left"
+      :width="200"
+      :closable="false"
+    >
+      <a-menu v-model:selectedKeys="selectedKeys" theme="light" mode="inline" @click="onMenuClickMobile">
+        <a-menu-item key="/dashboard">
+          <dashboard-outlined /><span>仪表盘</span>
+        </a-menu-item>
+        <a-menu-item key="/attendance">
+          <calendar-outlined /><span>月度考勤</span>
+        </a-menu-item>
+        <a-menu-item key="/dashboard/monthly-summary" v-if="authStore.isManager || authStore.isTeamLead">
+          <bar-chart-outlined /><span>月度汇总</span>
+        </a-menu-item>
+        <a-menu-item key="/overtime">
+          <clock-circle-outlined /><span>加班工时</span>
+        </a-menu-item>
+        <a-menu-item key="/leave">
+          <solution-outlined /><span>假期余额</span>
+        </a-menu-item>
+        <a-sub-menu key="requests" v-if="authStore.isEmployee || authStore.isTeamLead || authStore.isDeptManager">
+          <template #title><span><form-outlined />申请审批</span></template>
+          <a-menu-item key="/requests/mine" v-if="authStore.isEmployee || authStore.isTeamLead">我的申请</a-menu-item>
+          <a-menu-item key="/requests/new" v-if="authStore.isEmployee || authStore.isTeamLead">发起申请</a-menu-item>
+          <a-menu-item key="/requests/review" v-if="authStore.isTeamLead">待审核</a-menu-item>
+          <a-menu-item key="/requests/dept-review" v-if="authStore.isDeptManager">部门经理审批</a-menu-item>
+        </a-sub-menu>
+        <a-menu-item key="/requests/confirm" v-if="authStore.isManager">
+          <audit-outlined /><span>待确认录入</span>
+        </a-menu-item>
+        <a-menu-item key="/projects">
+          <appstore-outlined /><span>项目/系统</span>
+        </a-menu-item>
+        <a-sub-menu key="admin" v-if="authStore.isManager">
+          <template #title><span><setting-outlined />系统管理</span></template>
+          <a-menu-item key="/employees">人员管理</a-menu-item>
+          <a-menu-item key="/teams">班组管理</a-menu-item>
+          <a-menu-item key="/leave/annual-init">年假初始化</a-menu-item>
+        </a-sub-menu>
+      </a-menu>
+    </a-drawer>
+
+    <!-- 桌面端侧边栏 -->
+    <a-layout-sider v-if="!isMobile" v-model:collapsed="collapsed" collapsible theme="light">
       <div class="logo">{{ collapsed ? '考勤' : '人员考勤管理系统' }}</div>
       <a-menu v-model:selectedKeys="selectedKeys" theme="light" mode="inline" @click="onMenuClick">
         <a-menu-item key="/dashboard">
@@ -68,14 +129,40 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   DashboardOutlined, CalendarOutlined, ClockCircleOutlined,
   SolutionOutlined, FormOutlined, AuditOutlined, ScheduleOutlined,
-  SettingOutlined, AppstoreOutlined, BarChartOutlined
+  SettingOutlined, AppstoreOutlined, BarChartOutlined, MenuOutlined
 } from '@ant-design/icons-vue'
 import { useAuthStore } from '../stores/auth'
+
+const authStore = useAuthStore()
+const collapsed = ref(false)
+const mobileMenuVisible = ref(false)
+const isMobile = ref(window.innerWidth <= 768)
+
+const checkMobile = () => {
+  isMobile.value = window.innerWidth <= 768
+}
+
+onMounted(() => {
+  window.addEventListener('resize', checkMobile)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', checkMobile)
+})
+
+function onMenuClickMobile({ key }) {
+  mobileMenuVisible.value = false
+  router.push(key)
+}
+
+function onMenuClick({ key }) {
+  router.push(key)
+}
 
 const route = useRoute()
 const router = useRouter()
