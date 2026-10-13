@@ -8,6 +8,11 @@
     </a-space>
 
     <a-card :title="`${year} 年度假期余额`">
+      <div v-if="companyHireDate" style="margin-bottom:16px;padding:12px;background:#f0f5ff;border:1px solid #91caff;border-radius:4px;">
+        <p style="margin:0;font-size:13px;"><b>入职本司时间：</b>{{ companyHireDate }}</p>
+        <p style="margin:4px 0 0;font-size:13px;"><b>入职本司时长：</b>{{ tenureYears }} 年</p>
+        <p v-if="!canUseAnnual" style="margin:4px 0 0;font-size:13px;color:#cf1322;"><b>⚠ 入职未满1年，暂不可使用年假</b></p>
+      </div>
       <a-row :gutter="16">
         <a-col :span="6" v-for="item in displayBalances" :key="item.leave_type">
           <a-card :title="typeName(item)" class="balance-card" @click="item.hasBalance && showDetail(item)" :hoverable="item.hasBalance">
@@ -23,6 +28,7 @@
             <p v-if="item.hasBalance" style="margin-top:8px;">已使用: <b>{{ item.used_days }}</b> 天</p>
             <p v-if="item.hasBalance">总额度: <b>{{ item.entitled_days }}</b> 天</p>
             <p v-if="item.hasBalance">剩余: <b style="color:#52c41a;">{{ (item.entitled_days - item.used_days).toFixed(1) }}</b> 天</p>
+            <p v-if="item.leave_type === 'annual' && !canUseAnnual" style="font-size:12px;color:#cf1322;margin-top:4px;">⚠ 入职未满1年，暂不可使用</p>
             <p v-if="item.reset_at" style="font-size:11px;color:#999;margin-top:4px;">⏱ 重置于 {{ item.reset_at.slice(0,10) }}（之前已用 {{ item.reset_used_days }} 天）</p>
             <p v-if="item.hasBalance" class="click-tip">点击查看明细 →</p>
           </a-card>
@@ -90,6 +96,9 @@ const balances = ref([])
 const employees = ref([])
 const selectedUser = ref(authStore.user.id)
 const year = ref(new Date().getFullYear())
+const companyHireDate = ref(null)
+const tenureYears = ref(0)
+const canUseAnnual = ref(true)
 
 const detailVisible = ref(false)
 const detailTitle = ref('')
@@ -147,6 +156,9 @@ async function fetchBalance() {
   const res = await leaveApi.balance(selectedUser.value)
   balances.value = res.list
   year.value = res.year
+  companyHireDate.value = res.companyHireDate
+  tenureYears.value = res.tenureYears
+  canUseAnnual.value = res.canUseAnnual
 }
 
 async function fetchEmployees() {

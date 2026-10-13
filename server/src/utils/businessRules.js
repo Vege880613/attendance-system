@@ -30,13 +30,29 @@ function daysToUnits(days) {
 }
 
 // 年假分档（按入职日期到目标年份的工龄）
-function annualLeaveDays(hireDate, targetYear) {
-  const hire = new Date(hireDate);
+// 根据入职本司时间计算年假天数
+// 入职本司不满1年不享受年假
+function annualLeaveDays(hireDate, targetYear, companyHireDate) {
+  // 优先使用入职本司时间计算
+  const calcDate = companyHireDate || hireDate;
+  const hire = new Date(calcDate);
   const years = targetYear - hire.getFullYear();
   if (years < 1) return 0;
   if (years < 10) return 5;
   if (years < 20) return 10;
   return 15;
+}
+
+// 计算入职本司时长（年）
+function companyTenureYears(companyHireDate, targetYear) {
+  if (!companyHireDate) return 999; // 未设置则视为老员工
+  const hire = new Date(companyHireDate);
+  return targetYear - hire.getFullYear();
+}
+
+// 是否可以使用年假（入职满1年）
+function canUseAnnualLeave(companyHireDate, targetYear) {
+  return companyTenureYears(companyHireDate, targetYear) >= 1;
 }
 
 // 考勤是否达标（有效工时 < 8.67 小时为短缺，与标准工作日一致）
@@ -66,6 +82,8 @@ module.exports = {
   unitsToDays,
   daysToUnits,
   annualLeaveDays,
+  companyTenureYears,
+  canUseAnnualLeave,
   isShortage,
   calcEffectiveHours
 };

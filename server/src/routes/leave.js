@@ -1,6 +1,6 @@
 const db = require('../config/db');
 const { authRequired, requireRole } = require('../middleware/auth');
-const { annualLeaveDays } = require('../utils/businessRules');
+const { annualLeaveDays, companyTenureYears, canUseAnnualLeave } = require('../utils/businessRules');
 
 const router = require('express').Router();
 
@@ -11,6 +11,12 @@ router.get('/:userId', authRequired, (req, res) => {
   }
   const year = new Date().getFullYear();
   let list = db.prepare('SELECT * FROM leave_balances WHERE user_id = ? AND year = ?').all(userId, year);
+
+  // 获取用户入职本司时间
+  const user = db.prepare('SELECT company_hire_date FROM users WHERE id = ?').get(userId);
+  const companyHireDate = user ? user.company_hire_date : null;
+  const tenureYears = companyTenureYears(companyHireDate, year);
+  const canUseAnnual = canUseAnnualLeave(companyHireDate, year);
 
   // 动态计算调休余额（基于全部加班单位，不仅仅是可用的）
   const allOvertime = db.prepare(
@@ -80,7 +86,7 @@ router.get('/:userId', authRequired, (req, res) => {
     }
   });
 
-  res.json({ list, year });
+  res.json({ list, year, companyHireDate, tenureYears, canUseAnnual });
 });
 
 // 导出假期余额
@@ -183,7 +189,7 @@ router.post('/annual/init', authRequired, requireRole('manager'), (req, res) => 
   const { year, adjustments } = req.body;
   const targetYear = year || new Date().getFullYear();
   const users = db.prepare(
-    `SELECT id, hire_date FROM users WHERE status = 'active' AND role IN ('employee','team_lead','manager')`
+    `SELECT id, hire_date, company_hire_date FROM users WHERE status = 'active' AND role IN ('employee','team_lead','manager')`
   ).all();
 
   const adjustMap = {};
@@ -220,7 +226,7 @@ router.post('/annual/init', authRequired, requireRole('manager'), (req, res) => 
 
     // 初始化年假余额
     for (const u of users) {
-      const entitled = adjustMap[u.id] !== undefined ? adjustMap[u.id] : annualLeaveDays(u.hire_date, targetYear);
+      const entitled = adjustMap[u.id] !== undefined ? adjustMap[u.id] : annualLeaveDays(u.hire_date, targetYear, u.company_hire_date);
       upsert.run(u.id, targetYear, entitled, req.user.id);
     }
   });
