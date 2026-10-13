@@ -85,9 +85,9 @@ router.post('/', authRequired, requireRole('manager'), (req, res) => {
 });
 
 router.put('/:id', authRequired, requireRole('manager'), (req, res) => {
-  const { name, role, team_id, hire_date, employee_id } = req.body;
-  db.prepare('UPDATE users SET name=?, role=?, team_id=?, hire_date=?, employee_id=?, updated_at=datetime(\'now\',\'localtime\'), updated_by=? WHERE id=?').run(
-    name, role, team_id || null, hire_date, employee_id || null, req.user.id, req.params.id
+  const { name, role, team_id, hire_date, employee_id, company_hire_date } = req.body;
+  db.prepare('UPDATE users SET name=?, role=?, team_id=?, hire_date=?, employee_id=?, company_hire_date=?, updated_at=datetime(\'now\',\'localtime\'), updated_by=? WHERE id=?').run(
+    name, role, team_id || null, hire_date, employee_id || null, company_hire_date || null, req.user.id, req.params.id
   );
   db.prepare('INSERT INTO audit_logs (user_id, action, detail) VALUES (?,?,?)').run(
     req.user.id, 'update_user', `编辑员工 ID=${req.params.id}`
