@@ -2,8 +2,14 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 
-const dbPath = path.join(__dirname, '..', '..', 'data', 'attendance.db');
-fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+// 生产环境使用临时目录，本地使用项目目录
+const isProduction = process.env.NODE_ENV === 'production';
+const dbDir = isProduction ? '/tmp' : path.join(__dirname, '..', '..', 'data');
+const dbPath = path.join(dbDir, 'attendance.db');
+
+if (!isProduction) {
+  fs.mkdirSync(dbDir, { recursive: true });
+}
 
 const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
