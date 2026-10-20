@@ -1,0 +1,14 @@
+{
+    "python.testing.unittestArgs": [
+        "-v",
+        "-s",
+        "./server",
+        "-p",
+        "*test.py"
+    ],
+    "python.testing.pytestEnabled": false,
+    "python.testing.unittestEnabled": false,
+    "vitest.configFile": "server/vitest.config.mjs",
+    "vitest.nodeEnv": "NODE_ENV=test",
+    "vitest.root": "./server"
+}

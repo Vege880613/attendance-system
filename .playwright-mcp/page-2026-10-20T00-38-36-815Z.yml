@@ -1,0 +1,14 @@
+- generic [ref=f18e4]:
+  - generic [ref=f18e5]: 人员考勤管理系统
+  - generic [ref=f18e8]:
+    - heading "登 录" [level=2] [ref=f18e9]
+    - generic [ref=f18e10]:
+      - generic [ref=f18e16]:
+        - img "user" [ref=f18e18]
+        - textbox "用户名" [ref=f18e21]
+      - generic [ref=f18e27]:
+        - img "lock" [ref=f18e29]
+        - textbox "密码" [ref=f18e32]
+        - img "eye-invisible" [ref=f18e34] [cursor=pointer]
+      - button "登 录" [ref=f18e43] [cursor=pointer]
+    - paragraph [ref=f18e46]: "默认管理员: admin / admin123"

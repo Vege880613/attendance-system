@@ -60,9 +60,12 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: '服务器内部错误', detail: err.message });
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-});
+// 只在直接运行时监听端口；被测试 require 时不启动
+if (require.main === module) {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on http://localhost:${PORT}`);
+  });
+}
 
 module.exports = app;

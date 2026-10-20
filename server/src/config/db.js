@@ -2,13 +2,19 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 
-// 生产环境使用临时目录，本地使用项目目录
+// 测试环境使用内存数据库，生产环境使用临时目录，本地使用项目目录
+const isTest = process.env.NODE_ENV === 'test';
 const isProduction = process.env.NODE_ENV === 'production';
-const dbDir = isProduction ? '/tmp' : path.join(__dirname, '..', '..', 'data');
-const dbPath = path.join(dbDir, 'attendance.db');
+let dbPath;
 
-if (!isProduction) {
+if (isTest) {
+  dbPath = ':memory:';
+} else if (isProduction) {
+  dbPath = '/tmp/attendance.db';
+} else {
+  const dbDir = path.join(__dirname, '..', '..', 'data');
   fs.mkdirSync(dbDir, { recursive: true });
+  dbPath = path.join(dbDir, 'attendance.db');
 }
 
 const db = new Database(dbPath);
@@ -26,6 +32,8 @@ db.exec(`
     team_id INTEGER DEFAULT NULL,
     hire_date TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','resigned')),
+    employee_id TEXT DEFAULT NULL,
+    company_hire_date TEXT DEFAULT NULL,
     created_at TEXT DEFAULT (datetime('now','localtime')),
     created_by TEXT,
     updated_at TEXT,
@@ -74,6 +82,9 @@ db.exec(`
     units_count INTEGER NOT NULL DEFAULT 1,
     status TEXT DEFAULT 'pending' CHECK(status IN ('pending','approved','used','cancelled')),
     request_id INTEGER DEFAULT NULL,
+    leave_request_id INTEGER DEFAULT NULL,
+    leave_type_mark TEXT DEFAULT NULL,
+    leave_dates TEXT DEFAULT NULL,
     created_at TEXT DEFAULT (datetime('now','localtime')),
     created_by TEXT,
     updated_at TEXT,
@@ -111,6 +122,7 @@ db.exec(`
     overtime_units_used INTEGER DEFAULT 0,
     leave_type_used TEXT DEFAULT 'none' CHECK(leave_type_used IN ('annual','compensatory','mixed','business_trip','other','none')),
     reason TEXT,
+    project_id INTEGER DEFAULT NULL,
     status TEXT DEFAULT 'pending' CHECK(status IN ('pending','approved','rejected','entered','pending_dept')),
     team_lead_id INTEGER DEFAULT NULL,
     team_lead_comment TEXT,
@@ -122,6 +134,7 @@ db.exec(`
     manager_comment TEXT,
     manager_time TEXT,
     needs_dept_manager INTEGER DEFAULT 0,
+    is_reset_before INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now','localtime')),
     created_by TEXT,
     updated_at TEXT,

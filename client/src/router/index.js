@@ -1,5 +1,13 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { useAuthStore } from '../stores/auth'
+
+// 鉴权信息直接读 localStorage（和 auth store 同一数据源），
+// 避免在 router 守卫里调用 Pinia store —— 守卫执行时 Pinia 尚无激活组件上下文，
+// getActivePinia() 会抛错导致整个应用白屏。
+function getAuthState() {
+  const token = localStorage.getItem('token')
+  const user = JSON.parse(localStorage.getItem('user') || 'null')
+  return { isLoggedIn: !!token, userRole: user?.role }
+}
 
 const routes = [
   {
@@ -113,14 +121,14 @@ const router = createRouter({
 })
 
 router.beforeEach((to, from, next) => {
-  const authStore = useAuthStore()
+  const { isLoggedIn, userRole } = getAuthState()
   if (to.meta.public) {
     return next()
   }
-  if (!authStore.isLoggedIn) {
+  if (!isLoggedIn) {
     return next('/login')
   }
-  if (to.meta.roles && !to.meta.roles.includes(authStore.userRole)) {
+  if (to.meta.roles && !to.meta.roles.includes(userRole)) {
     return next('/dashboard')
   }
   next()

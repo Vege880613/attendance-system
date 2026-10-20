@@ -208,7 +208,7 @@ router.put('/offset', authRequired, requireRole('manager'), (req, res) => {
   }
 
   db.prepare('INSERT INTO audit_logs (user_id, action, detail) VALUES (?,?,?)').run(
-    req.user.id, 'offset_attendance', `用户${userId} ${date} 用 ${offsetType} 抵扣 ${units}`
+    req.user.id, 'offset_attendance', `用户${userId} ${date} 用 ${offsetType} 抵扣 ${offsetUnits}`
   );
   res.json({ message: '抵扣成功' });
 });

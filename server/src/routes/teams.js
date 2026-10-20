@@ -58,7 +58,7 @@ router.post('/', authRequired, requireRole('manager'), (req, res) => {
 
 router.put('/:id', authRequired, requireRole('manager'), (req, res) => {
   const { name, lead_user_id } = req.body;
-  db.prepare('UPDATE teams SET name=?, lead_user_id=?, updated_at=datetime("now","localtime"), updated_by=? WHERE id=?').run(name, lead_user_id || null, req.user.id, req.params.id);
+  db.prepare("UPDATE teams SET name=?, lead_user_id=?, updated_at=datetime('now','localtime'), updated_by=? WHERE id=?").run(name, lead_user_id || null, req.user.id, req.params.id);
   res.json({ message: '更新成功' });
 });
 

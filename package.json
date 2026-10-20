@@ -1,0 +1,15 @@
+{
+  "name": "attendance-system",
+  "version": "1.0.0",
+  "private": true,
+  "description": "人员考勤管理系统（全栈 monorepo：client + server）",
+  "scripts": {
+    "test:server": "cd server && NODE_ENV=test npm test",
+    "test:client": "cd client && npm test",
+    "test:e2e": "playwright test",
+    "test": "npm run test:server && npm run test:client"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1"
+  }
+}

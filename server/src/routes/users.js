@@ -98,7 +98,7 @@ router.put('/:id', authRequired, requireRole('manager'), (req, res) => {
 router.put('/:id/status', authRequired, requireRole('manager'), (req, res) => {
   const { status } = req.body;
   if (!['active', 'resigned'].includes(status)) return res.status(400).json({ message: '状态不合法' });
-  db.prepare('UPDATE users SET status=?, updated_at=datetime("now","localtime"), updated_by=? WHERE id=?').run(
+  db.prepare("UPDATE users SET status=?, updated_at=datetime('now','localtime'), updated_by=? WHERE id=?").run(
     status, req.user.id, req.params.id
   );
   db.prepare('INSERT INTO audit_logs (user_id, action, detail) VALUES (?,?,?)').run(
