@@ -8,8 +8,8 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: [['list']],
   use: {
-    // 使用系统已安装的 Google Chrome，避免下载 Playwright 自带 Chromium
-    channel: 'chrome',
+    // 使用系统已安装的 Microsoft Edge
+    channel: 'msedge',
     baseURL: 'http://localhost:5173',
     headless: true,
     trace: 'on-first-retry',

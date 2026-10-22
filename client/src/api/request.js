@@ -21,7 +21,9 @@ request.interceptors.response.use(
   error => {
     if (error.response) {
       const { status, data } = error.response
-      if (status === 401) {
+      // 登录接口的 401 是账号密码错误，不是 token 过期，不能重定向
+      const isLoginRequest = error.config?.url?.includes('/auth/login')
+      if (status === 401 && !isLoginRequest) {
         localStorage.removeItem('token')
         localStorage.removeItem('user')
         message.error('登录已过期，请重新登录')
