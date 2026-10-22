@@ -5,8 +5,9 @@
 ## 技术栈
 
 - **前端**：Vue 3 + Vite + Ant Design Vue 4 + Pinia + Vue Router + Axios
-- **后端**：Node.js + Express + MySQL 8.x（mysql2）+ JWT + bcryptjs
-- **数据库**：MySQL
+- **后端**：Java 8 + Spring Boot 2.7 + MyBatis-Plus + MySQL + EasyExcel + JWT（`java-server/`，已取代原 Node 实现）
+- **原后端（保留参考）**：Node.js + Express + SQLite（`server/`）
+- **数据库**：MySQL（原 Node 版使用 SQLite，已由 `docs/migrate-sqlite-to-mysql.js` 迁移至 MySQL）
 
 ## 功能模块
 

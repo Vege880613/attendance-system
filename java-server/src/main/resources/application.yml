@@ -1,0 +1,38 @@
+server:
+  port: 3000
+
+spring:
+  application:
+    name: attendance-server
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://127.0.0.1:3306/attendance_db?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&allowMultiQueries=true
+    username: root
+    password: root
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+  # 建表脚本（CREATE TABLE IF NOT EXISTS，幂等）
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:sql/schema.sql
+  # 关键：全局 snake_case 输出（与 Node 版契约一致）
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+    default-property-inclusion: always
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+
+# MyBatis-Plus
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      id-type: auto
+
+# JWT（与 Node 版默认值一致）
+jwt:
+  secret: attendance-system-secret-key-change-me
+  expires-in-ms: 43200000
