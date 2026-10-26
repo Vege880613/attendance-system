@@ -221,6 +221,7 @@ public class DashboardController {
         if (type == null) return "";
         if ("annual_leave".equals(type)) return "年假抵扣";
         if ("compensatory_leave".equals(type)) return "调休抵扣";
+        if ("no_fault".equals(type)) return "正常-无责任";
         return "";
     }
 

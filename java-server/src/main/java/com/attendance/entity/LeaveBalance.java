@@ -20,6 +20,8 @@ public class LeaveBalance {
     private Long userId;
     private String leaveType;
     private Integer year;
+    /** 0=年度类型（年假/调休等），1-12=月度类型（无责任抵扣） */
+    private Integer month;
     private BigDecimal entitledDays;
     private BigDecimal usedDays;
     private BigDecimal resetUsedDays;

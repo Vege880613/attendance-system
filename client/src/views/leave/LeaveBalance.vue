@@ -19,15 +19,15 @@
             <a-progress
               v-if="item.hasBalance"
               :percent="item.entitled_days > 0 ? Math.round((item.used_days / item.entitled_days) * 100) : 0"
-              :format="() => `${item.used_days} / ${item.entitled_days} 天`"
+              :format="() => `${item.used_days} / ${item.entitled_days} ${unitText(item)}`"
             />
             <div v-else style="text-align:center;color:#999;padding:20px 0;">
               <p>无余额限制</p>
               <p style="font-size:12px;">{{ typeDesc(item) }}</p>
             </div>
-            <p v-if="item.hasBalance" style="margin-top:8px;">已使用: <b>{{ item.used_days }}</b> 天</p>
-            <p v-if="item.hasBalance">总额度: <b>{{ item.entitled_days }}</b> 天</p>
-            <p v-if="item.hasBalance">剩余: <b style="color:#52c41a;">{{ (item.entitled_days - item.used_days).toFixed(1) }}</b> 天</p>
+            <p v-if="item.hasBalance" style="margin-top:8px;">已使用: <b>{{ item.used_days }}</b> {{ unitText(item) }}</p>
+            <p v-if="item.hasBalance">总额度: <b>{{ item.entitled_days }}</b> {{ unitText(item) }}</p>
+            <p v-if="item.hasBalance">剩余: <b style="color:#52c41a;">{{ (item.entitled_days - item.used_days).toFixed(1) }}</b> {{ unitText(item) }}</p>
             <p v-if="item.leave_type === 'annual' && !canUseAnnual" style="font-size:12px;color:#cf1322;margin-top:4px;">⚠ 入职未满1年，暂不可使用</p>
             <p v-if="item.reset_at" style="font-size:11px;color:#999;margin-top:4px;">⏱ 重置于 {{ item.reset_at.slice(0,10) }}（之前已用 {{ item.reset_used_days }} 天）</p>
             <p v-if="item.hasBalance" class="click-tip">点击查看明细 →</p>
@@ -40,7 +40,7 @@
     </a-card>
 
     <!-- 假期明细弹窗 -->
-    <a-modal v-model:open="detailVisible" :title="`${detailTitle} - 请假明细`" :footer="null" width="900">
+    <a-modal v-model:open="detailVisible" :title="detailModalTitle" :footer="null" width="900">
       <div v-if="detailList.some(r => r.is_reset_before)" style="margin-bottom:12px;padding:8px 12px;background:#fffbe6;border:1px solid #ffe58f;border-radius:4px;font-size:12px;color:#d46b08;">
         ⚠️ 标记为「重置前」的记录不计入当前年度统计
       </div>
@@ -56,7 +56,7 @@
             {{ record.start_date }} ~ {{ record.end_date }}
           </template>
           <template v-if="column.key === 'days'">
-            {{ record.days }} 天
+            {{ record.days }} {{ detailDaysUnit() }}
           </template>
           <template v-if="column.key === 'created_at'">
             {{ record.created_at ? record.created_at.slice(0, 16).replace('T', ' ') : '-' }}
@@ -106,12 +106,13 @@ const detailList = ref([])
 
 // 显示所有假期类型（包括无余额的）
 const displayBalances = computed(() => {
-  const allTypes = ['annual', 'compensatory', 'business_trip', 'other']
+  const allTypes = ['annual', 'compensatory', 'business_trip', 'other', 'no_fault']
   const typeNames = {
     annual: '年假',
     compensatory: '调休',
     business_trip: '公差',
-    other: '其他'
+    other: '其他',
+    no_fault: '无责任迟到/早退'
   }
   return allTypes.map(type => {
     const found = balances.value.find(b => b.leave_type === type)
@@ -121,7 +122,7 @@ const displayBalances = computed(() => {
       used_days: found ? found.used_days : 0,
       reset_used_days: found ? found.reset_used_days : 0,
       reset_at: found ? found.reset_at : null,
-      hasBalance: type === 'annual' || type === 'compensatory'
+      hasBalance: type === 'annual' || type === 'compensatory' || type === 'no_fault'
     }
   })
 })
@@ -130,17 +131,26 @@ const typeName = (item) => ({
   annual: '年假',
   compensatory: '调休',
   business_trip: '公差',
-  other: '其他'
+  other: '其他',
+  no_fault: '无责任迟到/早退'
 }[item.leave_type])
 
 const typeDesc = (item) => ({
   business_trip: '公差不计入假期余额',
-  other: '其他类型不计入余额'
+  other: '其他类型不计入余额',
+  no_fault: '每月 3 次，可抵扣 ≤0.5 小时的迟到/早退'
 }[item.leave_type] || '')
 
-const detailColumns = [
+// 余额单位：无责任抵扣按「次」，其余按「天」
+const unitText = (item) => item.leave_type === 'no_fault' ? '次' : '天'
+
+// 无责任抵扣的明细单位与列标题
+const isNoFaultDetail = () => detailTitle.value === '无责任迟到/早退'
+const detailDaysUnit = () => (isNoFaultDetail() ? '小时' : '天')
+
+const detailColumns = computed(() => [
   { title: '日期范围', key: 'date_range', width: 160 },
-  { title: '天数', key: 'days', width: 50 },
+  { title: isNoFaultDetail() ? '时长(小时)' : '天数', key: 'days', width: 70 },
   { title: '原因', dataIndex: 'reason', key: 'reason' },
   { title: '申请时间', dataIndex: 'created_at', key: 'created_at', width: 120 },
   { title: '重置标识', key: 'is_reset_before', width: 70 },
@@ -150,7 +160,10 @@ const detailColumns = [
   { title: '部门经理意见', dataIndex: 'dept_manager_comment', key: 'dept_manager_comment' },
   { title: '管理员确认', key: 'manager_name', width: 80 },
   { title: '管理员意见', dataIndex: 'manager_comment', key: 'manager_comment' }
-]
+])
+
+const detailModalTitle = computed(() =>
+  `${detailTitle.value} - ${isNoFaultDetail() ? '抵扣明细' : '请假明细'}`)
 
 async function fetchBalance() {
   const res = await leaveApi.balance(selectedUser.value)

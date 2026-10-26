@@ -63,12 +63,25 @@
           <a-radio-group v-model:value="offsetForm.offsetType" @change="onOffsetTypeChange">
             <a-radio value="annual_leave">年假抵扣</a-radio>
             <a-radio value="compensatory_leave">调休抵扣（需选加班条目）</a-radio>
+            <a-radio value="no_fault" :disabled="noFaultBalance <= 0 || !currentRecord?.check_in">无责任抵扣（迟到/早退 ≤0.5h）</a-radio>
           </a-radio-group>
+          <div v-if="noFaultBalance <= 0" style="color:#cf1322;font-size:12px;margin-top:4px;">
+            本月无责任抵扣次数已用完
+          </div>
+          <div v-else-if="!currentRecord?.check_in" style="color:#cf1322;font-size:12px;margin-top:4px;">
+            当天无打卡记录，无法使用无责任抵扣
+          </div>
         </a-form-item>
 
         <!-- 年假余额提示 -->
         <a-form-item v-if="offsetForm.offsetType === 'annual_leave'">
           <a-alert type="info" :message="`年假余额: ${annualBalance} 天`" />
+        </a-form-item>
+
+        <!-- 无责任抵扣提示 -->
+        <a-form-item v-if="offsetForm.offsetType === 'no_fault'">
+          <a-alert type="info" show-icon
+            :message="`本月剩余无责任抵扣次数: ${noFaultBalance} 次（迟到 08:21-09:00、早退 16:21-17:00 可用，既迟到又早退按 2 次计）`" />
         </a-form-item>
 
         <!-- 调休：选择加班条目 -->
@@ -91,7 +104,7 @@
           </a-table>
         </a-form-item>
 
-        <a-form-item v-if="offsetForm.offsetType !== 'compensatory_leave'" label="抵扣数量（1单位=0.5天）">
+        <a-form-item v-if="offsetForm.offsetType === 'annual_leave'" label="抵扣数量（1单位=0.5天）">
           <a-input-number v-model:value="offsetForm.offsetUnits" :min="1" :step="1" style="width:100%;" />
         </a-form-item>
       </a-form>
@@ -116,6 +129,7 @@ const currentRecord = ref(null)
 const offsetLoading = ref(false)
 const annualBalance = ref(0)
 const availableUnits = ref([])
+const noFaultBalance = ref(0)   // 本月无责任抵扣剩余次数
 
 const offsetForm = ref({
   offsetType: 'annual_leave',
@@ -140,7 +154,8 @@ const selectedDays = computed(() => {
 
 const offsetLabel = (type) => ({
   annual_leave: '年假抵扣',
-  compensatory_leave: '调休抵扣'
+  compensatory_leave: '调休抵扣',
+  no_fault: '无责任抵扣'
 }[type] || type)
 
 const columns = [
@@ -276,6 +291,10 @@ async function showOffset(record) {
   const balRes = await leaveApi.balance(userId)
   const annual = balRes.list.find(b => b.leave_type === 'annual')
   annualBalance.value = annual ? (annual.entitled_days - annual.used_days).toFixed(1) : 0
+
+  // 获取本月无责任抵扣剩余次数
+  const noFault = balRes.list.find(b => b.leave_type === 'no_fault')
+  noFaultBalance.value = noFault ? noFault.entitled_days - noFault.used_days : 0
 
   // 获取可用加班单位
   const otRes = await overtimeApi.available(userId)

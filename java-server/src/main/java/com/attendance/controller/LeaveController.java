@@ -37,6 +37,9 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/leave")
 public class LeaveController {
 
+    /** 每月无责任迟到/早退抵扣次数 */
+    public static final int NO_FAULT_MONTHLY_CHANCES = 3;
+
     @Resource
     private LeaveBalanceMapper leaveBalanceMapper;
     @Resource
@@ -76,9 +79,11 @@ public class LeaveController {
             throw BizException.forbidden("无权查看");
         }
         int year = LocalDate.now().getYear();
+        int month = LocalDate.now().getMonthValue();
 
+        // 年度类型（年假/调休/公差/其他）month=0
         List<LeaveBalance> list = leaveBalanceMapper.selectList(
-                new QueryWrapper<LeaveBalance>().eq("user_id", userId).eq("year", year));
+                new QueryWrapper<LeaveBalance>().eq("user_id", userId).eq("year", year).eq("month", 0));
 
         User user = userMapper.selectById(userId);
         String companyHireDate = user == null ? null : (user.getCompanyHireDate() == null ? null : user.getCompanyHireDate().toString());
@@ -136,16 +141,25 @@ public class LeaveController {
         for (String type : java.util.Arrays.asList("business_trip", "other")) {
             boolean exists = list.stream().anyMatch(b -> type.equals(b.getLeaveType()));
             if (!exists) {
-                Map<String, Object> m = new LinkedHashMap<>();
-                m.put("id", null);
-                m.put("user_id", userId);
-                m.put("leave_type", type);
-                m.put("year", year);
-                m.put("entitled_days", BigDecimal.ZERO);
-                m.put("used_days", BigDecimal.ZERO);
                 list.add(zeroBalance(userId, type, year));
             }
         }
+
+        // 无责任迟到/早退抵扣：按当前年月惰性创建（每月 1 日自动更新为 3 次）
+        LeaveBalance noFault = leaveBalanceMapper.selectOne(new QueryWrapper<LeaveBalance>()
+                .eq("user_id", userId).eq("leave_type", "no_fault").eq("year", year).eq("month", month));
+        if (noFault == null) {
+            noFault = new LeaveBalance();
+            noFault.setUserId(userId);
+            noFault.setLeaveType("no_fault");
+            noFault.setYear(year);
+            noFault.setMonth(month);
+            noFault.setEntitledDays(BigDecimal.valueOf(NO_FAULT_MONTHLY_CHANCES));
+            noFault.setUsedDays(BigDecimal.ZERO);
+            noFault.setCreatedBy(str(UserContext.getUserId()));
+            leaveBalanceMapper.insert(noFault);
+        }
+        list.add(noFault);
 
         List<Map<String, Object>> vo = list.stream().map(b -> {
             Map<String, Object> m = new LinkedHashMap<>();
@@ -153,6 +167,7 @@ public class LeaveController {
             m.put("user_id", b.getUserId());
             m.put("leave_type", b.getLeaveType());
             m.put("year", b.getYear());
+            m.put("month", b.getMonth());
             m.put("entitled_days", b.getEntitledDays());
             m.put("used_days", b.getUsedDays());
             m.put("reset_used_days", b.getResetUsedDays());
@@ -201,7 +216,7 @@ public class LeaveController {
                     : BusinessRules.annualLeaveDays(u.getHireDate() == null ? null : u.getHireDate().toString(), targetYear, chd);
 
             LeaveBalance existing = leaveBalanceMapper.selectOne(new QueryWrapper<LeaveBalance>()
-                    .eq("user_id", u.getId()).eq("leave_type", "annual").eq("year", targetYear));
+                    .eq("user_id", u.getId()).eq("leave_type", "annual").eq("year", targetYear).eq("month", 0));
             if (existing != null) {
                 existing.setResetUsedDays(existing.getUsedDays());
                 existing.setEntitledDays(BigDecimal.valueOf(entitled));
@@ -214,6 +229,7 @@ public class LeaveController {
                 b.setUserId(u.getId());
                 b.setLeaveType("annual");
                 b.setYear(targetYear);
+                b.setMonth(0);
                 b.setEntitledDays(BigDecimal.valueOf(entitled));
                 b.setUsedDays(BigDecimal.ZERO);
                 b.setCreatedBy(str(UserContext.getUserId()));
@@ -230,7 +246,8 @@ public class LeaveController {
     @RequireRole("manager")
     public Map<String, Object> annualClear(@RequestBody Map<String, Object> body) {
         int targetYear = body.get("year") == null ? LocalDate.now().getYear() - 1 : Integer.valueOf(str(body.get("year")));
-        leaveBalanceMapper.delete(new QueryWrapper<LeaveBalance>().eq("year", targetYear));
+        // 仅清理年度类型（month=0），保留无责任抵扣的月度记录
+        leaveBalanceMapper.delete(new QueryWrapper<LeaveBalance>().eq("year", targetYear).eq("month", 0));
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("message", targetYear + " 年度假期已清理");
         return result;
@@ -241,6 +258,7 @@ public class LeaveController {
         b.setUserId(userId);
         b.setLeaveType(type);
         b.setYear(year);
+        b.setMonth(0);
         b.setEntitledDays(BigDecimal.ZERO);
         b.setUsedDays(BigDecimal.ZERO);
         return b;

@@ -82,6 +82,7 @@ CREATE TABLE IF NOT EXISTS leave_balances (
   user_id BIGINT NOT NULL,
   leave_type VARCHAR(50) NOT NULL,
   year INT NOT NULL,
+  month INT NOT NULL DEFAULT 0,
   entitled_days DECIMAL(10,2) NOT NULL DEFAULT 0,
   used_days DECIMAL(10,2) NOT NULL DEFAULT 0,
   reset_used_days DECIMAL(10,2) DEFAULT 0,
@@ -90,7 +91,7 @@ CREATE TABLE IF NOT EXISTS leave_balances (
   created_by VARCHAR(255) DEFAULT NULL,
   updated_at DATETIME DEFAULT NULL,
   updated_by VARCHAR(255) DEFAULT NULL,
-  UNIQUE KEY uk_leave_user_type_year (user_id, leave_type, year)
+  UNIQUE KEY uk_leave_user_type_year_month (user_id, leave_type, year, month)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE IF NOT EXISTS attendance_requests (

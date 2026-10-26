@@ -9,6 +9,12 @@ public class BusinessRules {
     /** 标准工作日时长（08:20 上班，17:00 下班 = 8小时40分钟 = 8.67小时） */
     public static final double STANDARD_WORK_HOURS = 8.67;
 
+    /** 标准上班时间（分钟）：08:20 */
+    private static final int STANDARD_WORK_MINUTES = 8 * 60 + 20;
+
+    /** 标准下班时间（分钟）：17:00 */
+    private static final int STANDARD_END = 17 * 60;
+
     /** 加班小时 → 加班单位（每 3 小时 = 1 单位，向下取整） */
     public static int hoursToUnits(double hours) {
         return (int) Math.floor(hours / 3);
@@ -55,19 +61,34 @@ public class BusinessRules {
         return effectiveHours < STANDARD_WORK_HOURS;
     }
 
+    /** 解析 HH:mm 为分钟数；空值返回 -1 */
+    private static int toMinutes(String hhmm) {
+        if (hhmm == null || hhmm.isEmpty()) return -1;
+        String[] p = hhmm.split(":");
+        return Integer.parseInt(p[0]) * 60 + Integer.parseInt(p[1]);
+    }
+
+    /** 迟到分钟数：check_in 晚于 08:20 的部分（无迟到返回 0） */
+    public static double lateMinutes(String checkIn) {
+        int m = toMinutes(checkIn);
+        if (m < 0) return 0;
+        return Math.max(0, m - STANDARD_WORK_MINUTES);
+    }
+
+    /** 早退分钟数：check_out 早于 17:00 的部分（无早退返回 0） */
+    public static double earlyMinutes(String checkOut) {
+        int m = toMinutes(checkOut);
+        if (m < 0) return 0;
+        return Math.max(0, STANDARD_END - m);
+    }
+
     /** 根据打卡时间计算有效工时（08:20 上班基准），保留 2 位小数 */
     public static double calcEffectiveHours(String checkIn, String checkOut) {
         if (checkIn == null || checkOut == null || checkIn.isEmpty() || checkOut.isEmpty()) return 0;
-        String[] inParts = checkIn.split(":");
-        String[] outParts = checkOut.split(":");
-        int inH = Integer.parseInt(inParts[0]);
-        int inM = Integer.parseInt(inParts[1]);
-        int outH = Integer.parseInt(outParts[0]);
-        int outM = Integer.parseInt(outParts[1]);
-        int inMinutes = inH * 60 + inM;
-        int outMinutes = outH * 60 + outM;
-        int standardStart = 8 * 60 + 20;
-        int effectiveIn = Math.max(inMinutes, standardStart);
+        int inMinutes = toMinutes(checkIn);
+        int outMinutes = toMinutes(checkOut);
+        if (inMinutes < 0 || outMinutes < 0) return 0;
+        int effectiveIn = Math.max(inMinutes, STANDARD_WORK_MINUTES);
         int diff = outMinutes - effectiveIn;
         if (diff <= 0) return 0;
         return Math.round((diff / 60.0) * 100) / 100.0;

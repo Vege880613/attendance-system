@@ -2,6 +2,7 @@ package com.attendance.controller;
 
 import com.attendance.common.BizException;
 import com.attendance.common.UserContext;
+import com.attendance.controller.LeaveController;
 import com.attendance.entity.AttendanceRecord;
 import com.attendance.entity.AttendanceRequest;
 import com.attendance.entity.LeaveBalance;
@@ -206,7 +207,7 @@ public class AttendanceController {
             bal.setUsedDays(bal.getUsedDays().add(BigDecimal.valueOf(offsetUnits)));
             leaveBalanceMapper.updateById(bal);
             upsertOffsetRecord(recordId, userId, workDate, "annual_leave", offsetUnits);
-            insertOffsetLeaveRequest(userId, date, "annual", offsetUnits);
+            insertOffsetLeaveRequest(userId, date, "annual", offsetUnits, "年假抵扣");
         } else if ("compensatory_leave".equals(offsetType)) {
             if (overtimeUnitIds.isEmpty()) throw BizException.badRequest("调休抵扣需要选择加班条目");
             List<OvertimeUnit> units = overtimeUnitMapper.selectList(new QueryWrapper<OvertimeUnit>()
@@ -237,7 +238,52 @@ public class AttendanceController {
                 leaveBalanceMapper.updateById(compBal);
             }
             upsertOffsetRecord(recordId, userId, workDate, "compensatory_leave", totalDays);
-            insertOffsetLeaveRequest(userId, date, "compensatory", totalDays);
+            insertOffsetLeaveRequest(userId, date, "compensatory", totalDays, "调休抵扣");
+        } else if ("no_fault".equals(offsetType)) {
+            // 无责任迟到/早退抵扣：迟到 08:21-09:00、早退 16:21-17:00 可用
+            // 一天内既早退又迟到 → 按两次抵扣计算
+            if (record == null) {
+                // 旷工（无打卡记录）无法判定迟到/早退
+                throw BizException.badRequest("当天无打卡记录，无法使用无责任抵扣");
+            }
+            double late = BusinessRules.lateMinutes(record.getCheckIn());
+            double early = BusinessRules.earlyMinutes(record.getCheckOut());
+            boolean lateOk = late >= 1 && late <= 40;
+            boolean earlyOk = early >= 1 && early <= 39;
+            if (!lateOk && !earlyOk) {
+                throw BizException.badRequest("当天迟到/早退时长不在无责任抵扣范围内（迟到 08:21-09:00、早退 16:21-17:00）");
+            }
+            int chancesNeeded = (lateOk ? 1 : 0) + (earlyOk ? 1 : 0);
+
+            int month = workDate.getMonthValue();
+            LeaveBalance bal = leaveBalanceMapper.selectOne(new QueryWrapper<LeaveBalance>()
+                    .eq("user_id", userId).eq("leave_type", "no_fault").eq("year", year).eq("month", month));
+            if (bal == null) {
+                bal = new LeaveBalance();
+                bal.setUserId(userId);
+                bal.setLeaveType("no_fault");
+                bal.setYear(year);
+                bal.setMonth(month);
+                bal.setEntitledDays(BigDecimal.valueOf(LeaveController.NO_FAULT_MONTHLY_CHANCES));
+                bal.setUsedDays(BigDecimal.ZERO);
+                bal.setCreatedBy(str(UserContext.getUserId()));
+                leaveBalanceMapper.insert(bal);
+            }
+            double remaining = bal.getEntitledDays().subtract(bal.getUsedDays()).doubleValue();
+            if (remaining < chancesNeeded) throw BizException.badRequest("本月无责任抵扣次数已用完");
+
+            bal.setUsedDays(bal.getUsedDays().add(BigDecimal.valueOf(chancesNeeded)));
+            leaveBalanceMapper.updateById(bal);
+
+            double totalHours = Math.round(((late + early) / 60.0) * 100) / 100.0;
+            upsertOffsetRecord(recordId, userId, workDate, "no_fault", totalHours);
+            // type 用 'no_fault'，避免被「该日期已请假」检查误判为请假
+            if (lateOk) {
+                insertOffsetLeaveRequest(userId, date, "no_fault", Math.round((late / 60.0) * 100) / 100.0, "无责任迟到抵扣");
+            }
+            if (earlyOk) {
+                insertOffsetLeaveRequest(userId, date, "no_fault", Math.round((early / 60.0) * 100) / 100.0, "无责任早退抵扣");
+            }
         } else {
             throw BizException.badRequest("抵扣类型不合法");
         }
@@ -265,16 +311,17 @@ public class AttendanceController {
         }
     }
 
-    private void insertOffsetLeaveRequest(Long userId, String date, String leaveType, double days) {
+    private void insertOffsetLeaveRequest(Long userId, String date, String leaveType, double days, String reason) {
         AttendanceRequest r = new AttendanceRequest();
         r.setUserId(userId);
-        r.setType("leave");
+        // 无责任抵扣用独立 type，避免被「该日期已请假」检查误判
+        r.setType("no_fault".equals(leaveType) ? "no_fault" : "leave");
         r.setLeaveTypeUsed(leaveType);
         r.setStartDate(LocalDate.parse(date));
         r.setEndDate(LocalDate.parse(date));
         r.setDays(BigDecimal.valueOf(days));
         r.setStatus("entered");
-        r.setReason("考勤抵扣");
+        r.setReason(reason);
         r.setManagerId(UserContext.getUserId());
         r.setManagerComment("管理员抵扣");
         r.setManagerTime(LocalDateTime.now());
